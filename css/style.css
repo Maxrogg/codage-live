@@ -1,29 +1,32 @@
-/* ===== Codage live — thème « pelouse & craie » =====
-   Vert gazon profond pour le cadre, craie pour le texte clair, terrain vert-gris très pâle.
-   Nous = bleu, Eux = orange : ces deux couleurs ne servent QU'À désigner les équipes. */
+/* ===== Codage live — thème « maillot noir & jaune » =====
+   Noir maillot pour le cadre et le tableau d'affichage, jaune club pour ce qui est actif, fond gris froid, terrain vert pâle.
+   Nous = bleu, Eux = orange : ces deux couleurs ne servent QU'À désigner les équipes (le jaune ne sert qu'à l'interface). */
 :root {
   color-scheme: light;
   --display: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI Semibold", "DejaVu Sans Condensed", system-ui, sans-serif;
   --body: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
 
-  --bg: #e7ece5; --surface: #ffffff; --surface2: #f1f4ef;
-  --ink: #17231c; --ink2: #52625a; --rule: #d6ddd3;
-  --turf: #0f3b2d; --turf2: #17513f; --chalk: #f2f6ee; --chalk2: rgba(242, 246, 238, .68);
+  --bg: #eceef1; --surface: #ffffff; --surface2: #f4f5f7;
+  --ink: #14161a; --ink2: #5a616c; --rule: #dadde2;
+  --turf: #111215; --turf2: #2b2e34; --chalk: #f5f6f8; --chalk2: rgba(245, 246, 248, .66);
+  --yellow: #ffd21f; --yellow-ink: #17140a;
+  --shadow: 0 1px 2px rgba(17, 18, 21, .06), 0 6px 18px -12px rgba(17, 18, 21, .28);
 
-  --pitch: #e2eadf; --pitch-line: #8da193; --pitch-stripe: rgba(15, 59, 45, .035);
+  --pitch: #dfe9d9; --pitch-line: #7e9486; --pitch-stripe: rgba(30, 80, 45, .05);
 
   --nous: #2a78d6; --eux: #e9622b;
   --nous-d: #12a39a; --eux-d: #b8439b;
   --danger: #c93434; --perte: #d22f2f; --good: #12803a; --warn: #d89200;
-  --nous-on: #7db8ff; --eux-on: #ff9a6b;   /* variantes claires pour fond vert foncé */
+  --nous-on: #7db8ff; --eux-on: #ff9a6b;   /* variantes claires pour fond noir */
 }
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #0c110e; --surface: #151b17; --surface2: #1c241f;
-    --ink: #e8eee8; --ink2: #9fb0a4; --rule: #28332c;
-    --turf: #0a2a20; --turf2: #123f31;
-    --pitch: #19231d; --pitch-line: #55695b; --pitch-stripe: rgba(255, 255, 255, .02);
+    --bg: #08090b; --surface: #131417; --surface2: #1a1c20;
+    --ink: #eceef1; --ink2: #9aa0aa; --rule: #26282d;
+    --turf: #000000; --turf2: #24262b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 22px -14px rgba(0, 0, 0, .9);
+    --pitch: #161c17; --pitch-line: #55695b; --pitch-stripe: rgba(255, 255, 255, .02);
     --nous: #3d8ce8; --eux: #e0642c; --nous-d: #17a094; --eux-d: #cf5fb3; --danger: #ee7070; --perte: #e64545;
     --good: #46c27a; --warn: #f0b429;
   }
@@ -34,23 +37,23 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(
 :focus-visible { outline: 2px solid var(--nous); outline-offset: 2px; }
 
 /* ----- cadre ----- */
-header { display: flex; align-items: center; gap: 22px; padding: 0 20px; height: 54px; background: var(--turf); color: var(--chalk); }
+header { display: flex; align-items: center; gap: 24px; padding: 0 22px; height: 58px; background: var(--turf); color: var(--chalk); }
 h1 { display: flex; align-items: center; gap: 10px; margin: 0; font: 600 19px/1 var(--display); letter-spacing: .01em; white-space: nowrap; }
-h1 .mark { width: 30px; height: 19px; fill: none; stroke: var(--chalk); stroke-width: 1.6; }
+h1 .mark { width: 32px; height: 20px; fill: none; stroke: var(--yellow); stroke-width: 1.7; }
 nav { display: flex; align-self: stretch; gap: 2px; }
 header nav button.tab { background: transparent; border: 0; border-bottom: 3px solid transparent; border-radius: 0; color: var(--chalk2);
-  padding: 0 14px; font: 500 15px/1 var(--display); letter-spacing: .01em; margin-top: 3px; }
-header nav button.tab:hover:not(:disabled) { color: var(--chalk); border-color: transparent; border-bottom-color: rgba(242, 246, 238, .35); }
-header nav button.tab.on { color: var(--chalk); border-bottom-color: var(--chalk); background: transparent; }
+  padding: 0 16px; font: 500 16px/1 var(--display); letter-spacing: .01em; margin-top: 3px; }
+header nav button.tab:hover:not(:disabled) { color: var(--chalk); border-color: transparent; border-bottom-color: rgba(255, 210, 31, .45); }
+header nav button.tab.on, header nav button.tab.on:hover:not(:disabled) { color: #fff; border-bottom-color: var(--yellow); background: transparent; }
 header .sub { color: var(--chalk2); }
-header button.ghost { background: rgba(242, 246, 238, .1); border-color: rgba(242, 246, 238, .25); color: var(--chalk); padding: 5px 11px; }
-header button.ghost:hover:not(:disabled) { background: rgba(242, 246, 238, .22); border-color: rgba(242, 246, 238, .5); }
+header button.ghost { background: transparent; border-color: var(--yellow); color: var(--yellow); padding: 5px 12px; font-weight: 600; }
+header button.ghost:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
 header #count { margin-left: auto; font-variant-numeric: tabular-nums; }
-.flash { opacity: 0; transition: opacity .2s; font-size: 12px; color: var(--chalk); background: rgba(242, 246, 238, .14); padding: 3px 10px; border-radius: 99px; }
+.flash { opacity: 0; transition: opacity .2s; font-size: 12px; color: var(--chalk); background: rgba(255, 255, 255, .14); padding: 3px 10px; border-radius: 99px; }
 .flash:empty { display: none; }
 .flash.on { opacity: 1; }
 .save { font-size: 12px; } header .save.err { color: #ffb4b4; font-weight: 600; }
-main { padding: 16px 20px 28px; max-width: 1560px; margin: 0 auto; }
+main { padding: 20px 22px 32px; max-width: 1560px; margin: 0 auto; }
 
 /* ----- titres & texte ----- */
 h2 { font: 600 15px/1.2 var(--display); letter-spacing: .01em; margin: 0 0 8px; color: var(--ink); }
@@ -61,7 +64,7 @@ kbd { font: 600 11px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; color
   border-bottom-width: 2px; border-radius: 5px; padding: 2px 5px; white-space: nowrap; }
 
 /* ----- boutons & champs ----- */
-button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 11px; cursor: pointer;
+button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 12px; cursor: pointer;
   transition: background .12s, border-color .12s, color .12s; }
 button:hover:not(:disabled), select:hover { background: var(--surface2); border-color: var(--ink2); }
 button:active:not(:disabled) { transform: translateY(1px); }
@@ -78,36 +81,37 @@ input:hover { border-color: var(--ink2); }
 .badge.V { color: var(--good); border-color: var(--good); } .badge.D { color: var(--danger); border-color: var(--danger); } .badge.N { color: var(--ink2); }
 
 /* ----- vue Codage ----- */
-#view-live { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+#view-live { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
 #view-live[hidden], #view-analysis[hidden], #view-matches[hidden], #view-bilan[hidden] { display: none; }
 .stage canvas, .maps canvas { width: 100%; display: block; border-radius: 8px; background: var(--pitch); cursor: crosshair; }
-.stage canvas { box-shadow: 0 0 0 1px var(--rule), 0 8px 24px -12px rgba(15, 59, 45, .35); }
+.stage canvas { margin: 8px; width: calc(100% - 16px); box-shadow: 0 0 0 8px var(--turf), 0 16px 30px -14px rgba(0, 0, 0, .55); border-radius: 7px; }
 .maps canvas { cursor: default; }
-.hint { margin: 12px 0 0; padding: 10px 14px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--turf2); border-radius: 8px; min-height: 42px; line-height: 1.9; }
+.hint { margin: 18px 0 0; padding: 10px 16px; background: var(--surface); border: 1px solid var(--rule); border-left: 5px solid var(--yellow); border-radius: 10px; min-height: 44px; line-height: 1.9; box-shadow: var(--shadow); }
 
 aside { display: grid; gap: 14px; }
-/* tableau de score */
-.board { background: var(--turf); color: var(--chalk); border-radius: 12px; padding: 14px 16px 16px; }
+/* tableau d'affichage : noir, chrono jaune, c'est LE point fort de l'écran */
+.board { background: var(--turf); color: var(--chalk); border-radius: 14px; padding: 16px 18px 18px; box-shadow: var(--shadow); }
 .board-top { display: flex; justify-content: space-between; gap: 10px; font: 500 13px/1.2 var(--display); color: var(--chalk2); }
-.clock { font: 600 58px/1.05 var(--display); font-variant-numeric: tabular-nums; letter-spacing: .01em; margin: 4px 0 2px; }
-.scoreline { display: flex; align-items: baseline; gap: 10px; font-family: var(--display); }
-.scoreline b { font: 600 30px/1 var(--display); font-variant-numeric: tabular-nums; min-width: 1ch; text-align: center; }
-.scoreline i { font-style: normal; color: var(--chalk2); font-size: 22px; }
+.clock { font: 600 68px/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: .01em; margin: 8px 0 12px; color: var(--yellow); }
+.scoreline { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; font-family: var(--display); padding: 10px 0 0; border-top: 1px solid rgba(255, 255, 255, .14); }
 .scoreline .sl-t { font-size: 15px; font-weight: 500; }
-.scoreline .sl-t.n { color: var(--nous-on); margin-right: auto; } .scoreline .sl-t.e { color: var(--eux-on); margin-left: auto; }
-.board .row { margin-top: 14px; }
-.board button { background: rgba(242, 246, 238, .1); border-color: rgba(242, 246, 238, .2); color: var(--chalk); }
-.board button:hover:not(:disabled) { background: rgba(242, 246, 238, .2); border-color: rgba(242, 246, 238, .45); }
-.board button.pri { background: var(--chalk); color: var(--turf); border-color: var(--chalk); font-weight: 600; }
-.board button.pri:hover:not(:disabled) { background: #fff; }
-.board button.danger { color: #ffb4b4; border-color: #ffb4b4; background: rgba(255, 180, 180, .12); }
+.scoreline .sl-t.n { color: var(--nous-on); grid-column: 1; grid-row: 1; } .scoreline .sl-t.e { color: var(--eux-on); grid-column: 3; grid-row: 1; text-align: right; }
+.scoreline b { font: 600 40px/1 var(--display); font-variant-numeric: tabular-nums; min-width: 1ch; text-align: center; color: #fff; }
+.scoreline #sb-n, .scoreline #sb-e { grid-row: 2; } .scoreline #sb-n { grid-column: 1; text-align: left; } .scoreline #sb-e { grid-column: 3; text-align: right; }
+.scoreline i { font-style: normal; color: var(--chalk2); font-size: 24px; grid-column: 2; grid-row: 2; }
+.board .row { margin-top: 16px; }
+.board button { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .18); color: var(--chalk); }
+.board button:hover:not(:disabled) { background: rgba(255, 255, 255, .18); border-color: rgba(255, 255, 255, .4); }
+.board button.pri { background: var(--yellow); color: var(--yellow-ink); border-color: var(--yellow); font-weight: 700; }
+.board button.pri:hover:not(:disabled) { background: #ffe066; border-color: #ffe066; }
+.board button.danger { color: #ffb4b4; border-color: #ffb4b4; background: rgba(255, 180, 180, .1); }
 
 /* feuille de match : un seul bloc, des filets au lieu de cartes empilées */
-.sheet { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+.sheet { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; box-shadow: var(--shadow); }
 .sheet > section, .sheet > details { padding: 14px 16px; }
 .sheet > * + * { border-top: 1px solid var(--rule); }
 details.fold > summary { cursor: pointer; font: 600 15px/1.2 var(--display); list-style: none; display: flex; align-items: center; gap: 8px; }
-details.fold > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink2); border-bottom: 2px solid var(--ink2); transform: rotate(-45deg); transition: transform .15s; }
+details.fold > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(-45deg); transition: transform .15s; }
 details.fold[open] > summary::before { transform: rotate(45deg); }
 details.fold > summary::-webkit-details-marker { display: none; }
 details.fold > :not(summary):first-of-type { margin-top: 10px; }
@@ -126,7 +130,7 @@ table.stats tbody tr + tr { border-top: 1px solid var(--rule); }
 .recent li.n { border-left-color: var(--nous); color: var(--ink); } .recent li.e { border-left-color: var(--eux); color: var(--ink); }
 
 /* ----- cartes (Analyse, Bilan, Matchs) ----- */
-.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); }
 details.card { margin-bottom: 14px; } details.card summary { cursor: pointer; font: 600 15px var(--display); }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 14px; }
 .filters label { display: flex; align-items: center; gap: 8px; color: var(--ink2); }
@@ -138,14 +142,14 @@ details.card { margin-bottom: 14px; } details.card summary { cursor: pointer; fo
 .maps .pan h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 10px; }
 .maps.dense .pan { padding: 9px; } .maps.dense .pan h2 { font-size: 13px; margin-bottom: 6px; white-space: normal; line-height: 1.25; }
 .pan.click { cursor: zoom-in; transition: border-color .12s, box-shadow .12s; }
-.pan.click:hover { border-color: var(--turf2); box-shadow: 0 6px 16px -10px rgba(15, 59, 45, .5); }
+.pan.click:hover { border-color: var(--ink); }
 .maps .pan canvas { cursor: inherit; }
 
 /* préréglages = sélecteur segmenté */
-.chips { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--surface2); border: 1px solid var(--rule); border-radius: 10px; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 4px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--shadow); }
 button.chip { border: 0; background: transparent; border-radius: 7px; padding: 6px 13px; font: 500 14px var(--display); color: var(--ink2); }
 button.chip:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
-button.chip.on { background: var(--turf); color: var(--chalk); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+button.chip.on { background: var(--turf); color: var(--yellow); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
 
 /* tableaux de zones */
 .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; margin-top: 10px; }

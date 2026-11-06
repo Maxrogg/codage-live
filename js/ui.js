@@ -265,7 +265,7 @@ FC.ui = (function () {
     if (!d.hasClock) { box.innerHTML = ''; $('mo-rule').textContent = ''; return; }
     FC.chart.momentum(box, d, 'Momentum : avantage de Nous ou d\'Eux minute par minute');
     const M = C.momentum;
-    $('mo-rule').textContent = 'Points : entrée dans la surface ' + M.entSurf + ' (sinon dernier tiers ' + M.entTiers + '), frappe ' + M.shot + ' (+' + M.shotOn + ' cadrée, +' + M.goal + ' but), déséquilibre réussi ' + M.deseq + ', récupération haute ' + M.recupHaute + '. Fenêtre glissante. Réglable dans config.js (momentum).';
+    $('mo-rule').textContent = 'Points : entrée dans la surface ' + M.entSurf + ' (sinon dernier tiers ' + M.entTiers + '), frappe ' + M.shot + ' (+' + M.shotOn + ' cadrée, +' + M.goal + ' but ; ×' + M.shotCol[3] + ' dans le dernier quart), déséquilibre réussi ' + M.deseq + ' (×' + M.deseqLane[2] + ' dans l\'axe, ×' + M.deseqLane[1] + ' intérieur, ×' + M.deseqLane[0] + ' sur le côté, selon l\'arrivée), récupération haute ' + M.recupHaute + '. Fenêtre glissante. Réglable dans config.js (momentum).';
   }
   function renderTime(half) {
     const metric = $('t-metric').value, t = FC.stats.timeline(FC.store.all(), metric, half), box = $('t-chart');
