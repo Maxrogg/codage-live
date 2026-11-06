@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codage live — Match</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1c3d2e">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h1>Codage live</h1>
+  <nav>
+    <button id="tab-live" class="tab on">Codage</button>
+    <button id="tab-analysis" class="tab">Analyse</button>
+    <button id="tab-bilan" class="tab">Bilan</button>
+    <button id="tab-matches" class="tab">Matchs</button>
+  </nav>
+  <span id="count" class="sub"></span>
+  <span id="save-state" class="sub save"></span>
+  <span id="flash" class="flash"></span>
+</header>
+
+<main id="view-live">
+  <section class="stage">
+    <canvas id="live"></canvas>
+    <p id="hint" class="hint"></p>
+  </section>
+  <aside>
+    <div class="card clockcard">
+      <div id="clock" class="clock">00:00</div>
+      <div class="sub"><span id="half"></span> · <span id="dir"></span></div>
+      <div class="row">
+        <button id="btn-clock">▶ Chrono</button>
+        <button id="btn-half">Mi-temps</button>
+        <button id="btn-flip" title="Inverser le sens du terrain">⇄ Sens</button>
+        <button id="btn-zero" title="Efface les événements, le score et le chrono de CE match">Remettre à zéro</button>
+      </div>
+    </div>
+    <div class="card matchcard">
+      <h2>Match</h2>
+      <div class="fields">
+        <label>Adversaire <input id="m-adv" type="text" placeholder="ex. FC Annecy" autocomplete="off"></label>
+        <label>Date <input id="m-date" type="date"></label>
+      </div>
+      <div class="fields score">
+        <span class="n">Nous</span><input id="m-sn" type="number" min="0" max="30" inputmode="numeric">
+        <span>–</span><input id="m-se" type="number" min="0" max="30" inputmode="numeric"><span class="e">Eux</span>
+        <button id="m-fill" title="Reprendre les buts codés comme score">Buts codés</button>
+        <span id="m-res" class="badge"></span>
+      </div>
+    </div>
+    <div class="card"><div id="live-stats"></div></div>
+    <div class="card"><h2>Derniers événements</h2><ul id="recent" class="recent"></ul>
+      <div class="row">
+        <button id="btn-undo">Annuler (Ctrl+Z)</button>
+      </div>
+    </div>
+    <div class="card"><h2>Raccourcis</h2><table class="legend"><tbody id="legend"></tbody></table></div>
+    <div class="card">
+      <h2>Données</h2>
+      <p class="sub" id="save-note">Sauvegarde automatique à chaque événement.</p>
+      <div class="row">
+        <button id="btn-dl-csv">Télécharger CSV</button>
+        <button id="btn-dl-all">Sauvegarde complète (JSON)</button>
+        <button id="btn-import" title="Recharger une sauvegarde JSON (autre appareil, autre version de l'outil)">Importer une sauvegarde</button>
+        <input id="file-import" type="file" accept=".json,application/json" hidden>
+        <button id="btn-json">Copier JSON</button>
+        <button id="btn-csv">Copier CSV</button>
+        <button id="btn-reset">Nouveau match</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<main id="view-analysis" hidden>
+  <div class="filters">
+    <div id="an-presets" class="chips"></div>
+    <label>Filtre <select id="f-result"><option value="all">toutes</option><option value="ok">réussies</option><option value="ko">manquées</option></select></label>
+    <label>Période <select id="f-half"><option value="0">match entier</option><option value="1">1re mi-temps</option><option value="2">2e mi-temps</option></select></label>
+  </div>
+  <p class="sub keyline">Nous attaquons toujours vers la droite. Pointillé = raté. Croix rouge = perte de Nous (= récup d'Eux), croix bleue = perte d'Eux (= récup de Nous). Clique une petite carte pour l'agrandir.</p>
+  <p id="diff-key" class="sub keyline" hidden>Carte sûr / à risque — <b>couleur</b> : <b class="n">bleu</b> = zone plus sûre que la moyenne · gris = dans la moyenne · <b style="color:var(--perte)">rouge</b> = plus de pertes que la moyenne. <b>Intensité</b> = volume : une zone à 2 passes reste invisible, une zone à 70 passes ressort fort.</p>
+  <div id="an-grid" class="maps"></div>
+  <details id="an-det" class="card"><summary>Tableaux par zones (4 zones × 5 couloirs)</summary>
+    <div class="maps two">
+      <section><h2>Nous</h2><div id="zones-n" class="zones"></div></section>
+      <section><h2>Eux</h2><div id="zones-e" class="zones"></div></section>
+    </div>
+  </details>
+  <section class="card"><div id="an-stats"></div></section>
+</main>
+
+<main id="view-bilan" hidden>
+  <div class="filters">
+    <label>Période <select id="b-half"><option value="0">match entier</option><option value="1">1re mi-temps</option><option value="2">2e mi-temps</option></select></label>
+    <button id="btn-bilan-copy">Copier le bilan</button>
+    <span class="sub">✓ point positif · ⚠ à surveiller · • info. Lecture automatique des chiffres codés : à toi de juger.</span>
+    <span id="bi-note" class="sub"></span>
+  </div>
+  <section class="card"><div id="bi-stats"></div></section>
+  <section class="card">
+    <h2>Évolution par tranches de 15 min</h2>
+    <div class="filters">
+      <label>Indicateur <select id="t-metric">
+        <option value="deseq">Déséquilibres réussis</option><option value="shots">Frappes</option>
+        <option value="perte">Pertes de balle</option><option value="recup">Récupérations</option></select></label>
+      <span class="sub"><b class="n">■</b> Nous · <b class="e">■</b> Eux</span>
+    </div>
+    <div id="t-chart"></div><p id="t-note" class="sub"></p>
+  </section>
+  <div class="bilan">
+    <section class="card"><h2>Notre jeu</h2><ul id="bi-nous" class="insights"></ul></section>
+    <section class="card"><h2>Leur jeu</h2><ul id="bi-eux" class="insights"></ul></section>
+    <section class="card"><h2>Duel</h2><ul id="bi-duel" class="insights"></ul></section>
+  </div>
+</main>
+
+<main id="view-matches" hidden>
+  <section class="card">
+    <h2>Matchs enregistrés</h2>
+    <div class="row"><button id="btn-new">+ Nouveau match</button><span class="sub" id="lib-note"></span></div>
+    <div id="lib-list"></div>
+  </section>
+  <section class="card">
+    <h2>Points de sauvegarde automatiques</h2>
+    <p class="sub">Copies prises toutes les 20 actions, toutes les 3 min, et avant remise à zéro, suppression, nouveau match ou import. « Restaurer » crée un nouveau match avec cette copie : rien n'est écrasé.</p>
+    <div id="snap-list"></div>
+  </section>
+  <section class="card">
+    <h2>Victoires, nuls, défaites</h2>
+    <p class="sub">Moyenne par match des indicateurs codés. Le score est celui saisi dans la carte « Match » (sinon les buts codés).</p>
+    <div id="cmp"></div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/clock.js"></script>
+<script src="js/events.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/pitch.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/viz.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/input.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/pwa.js"></script>
+<script>FC.ui.init();</script>
+</body>
+</html>
