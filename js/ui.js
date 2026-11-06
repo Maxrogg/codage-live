@@ -14,29 +14,39 @@ FC.ui = (function () {
 
   // ---------- tableau de stats ----------
   function frac(a, n) { return a + ' / ' + n; }
+  // Fiche de match façon « stats TV » : Nous à gauche, Eux à droite, barre de partage sous chaque ligne principale.
   function statsTable(container, half, compact) {
     const ev = FC.store.all(), a = FC.stats.summary(ev, 'N', half), b = FC.stats.summary(ev, 'E', half);
+    const sub = function (t) { return ' <span class="sub">' + t + '</span>'; };
+    // [libellé, valeur affichée, secondaire (caché en compact), valeur pour la barre]
     const rows = [
-      ['Passes réussies', function (s) { return frac(s.passes.ok, s.passes.n) + (s.passes.pct == null ? '' : ' (' + s.passes.pct + '%)'); }],
+      ['Passes réussies', function (s) { return s.passes.ok + (s.passes.pct == null ? '' : sub(s.passes.pct + '%')); }, 0, function (s) { return s.passes.ok; }],
       ['Passes manquées', function (s) { return s.passes.ko; }, 1],
-      ['Déséquilibres réussis', function (s) { return '<b>' + s.deseq.total + '</b>'; }],
-      ['· passes', function (s) { return frac(s.deseq.passe.ok, s.deseq.passe.n); }, 1],
-      ['· conduites', function (s) { return frac(s.deseq.conduite.ok, s.deseq.conduite.n); }, 1],
-      ['Récupérations', function (s) { return s.recup.n + ' <span class="sub">(hautes ' + s.recup.haute + ')</span>'; }],
-      ['· dont sur erreur technique adv.', function (s) { return s.recup.surRate; }, 1],
-      ['Duels gagnés (Z / E)', function (s) { return s.duels.n ? s.duels.won + ' / ' + s.duels.n + ' (' + s.duels.pct + '%)' : '–'; }],
-      ['Pertes', function (s) { return s.perte.n + ' <span class="sub">(dans son tiers ' + s.perte.ownThird + ')</span>'; }],
-      ['· dont sur erreur technique', function (s) { return s.perte.surRate; }, 1],
+      ['Déséquilibres réussis', function (s) { return s.deseq.total; }, 0, function (s) { return s.deseq.total; }],
+      ['passes', function (s) { return frac(s.deseq.passe.ok, s.deseq.passe.n); }, 1],
+      ['conduites', function (s) { return frac(s.deseq.conduite.ok, s.deseq.conduite.n); }, 1],
+      ['Entrées dans la surface', function (s) { return s.entrees.surf; }, 0, function (s) { return s.entrees.surf; }],
       ['Entrées dernier tiers', function (s) { return s.entrees.tiers; }, 1],
-      ['Entrées dans la surface', function (s) { return s.entrees.surf; }],
-      ['Frappes', function (s) { return s.shots.n + ' <span class="sub">(cadrées ' + (s.shots.cadre + s.shots.but) + ', buts ' + s.shots.but + ')</span>'; }],
-      ['· dans la surface', function (s) { return s.shots.surface; }, 1],
-      ['· efficacité (buts ÷ frappes)', function (s) { return s.shots.eff == null ? '–' : s.shots.eff + '%'; }, 1]
+      ['Frappes', function (s) { return s.shots.n + sub((s.shots.cadre + s.shots.but) + ' cadr.'); }, 0, function (s) { return s.shots.n; }],
+      ['dans la surface', function (s) { return s.shots.surface; }, 1],
+      ['buts ÷ frappes', function (s) { return s.shots.eff == null ? '–' : s.shots.eff + '%'; }, 1],
+      ['Duels gagnés (Z / E)', function (s) { return s.duels.n ? s.duels.won + sub(s.duels.pct + '%') : '–'; }, 0, function (s) { return s.duels.won; }],
+      ['Récupérations', function (s) { return s.recup.n + sub('hautes ' + s.recup.haute); }, 0, function (s) { return s.recup.n; }],
+      ['sur erreur technique adv.', function (s) { return s.recup.surRate; }, 1],
+      ['Pertes', function (s) { return s.perte.n + sub('son tiers ' + s.perte.ownThird); }, 0, function (s) { return s.perte.n; }],
+      ['sur erreur technique', function (s) { return s.perte.surRate; }, 1]
     ];
-    let h = '<table class="stats"><thead><tr><th></th><th class="n">Nous</th><th class="e">Eux</th></tr></thead><tbody>';
-    rows.forEach(function (r) { if (compact && r[2]) return; h += '<tr><th>' + r[0] + '</th><td>' + r[1](a) + '</td><td>' + r[1](b) + '</td></tr>'; });
-    container.innerHTML = h + '</tbody></table>';
+    let h = '<div class="facts"><div class="fh"><span class="n">Nous</span><span class="e">Eux</span></div>';
+    rows.forEach(function (r) {
+      if (compact && r[2]) return;
+      if (r[2]) { h += '<div class="fr minor"><span class="v">' + r[1](a) + '</span><span class="l">' + r[0] + '</span><span class="v">' + r[1](b) + '</span></div>'; return; }
+      const x = r[3](a) || 0, y = r[3](b) || 0, p = x + y ? Math.round(100 * x / (x + y)) : 50;
+      h += '<div class="fr"><span class="v n">' + r[1](a) + '</span><span class="l">' + r[0] + '</span><span class="v e">' + r[1](b) + '</span>' +
+        '<span class="bar' + (x + y ? '' : ' empty') + '"><i style="width:' + p + '%"></i></span></div>';
+    });
+    container.innerHTML = h + '</div>';
   }
+
 
   // ---------- matrices de zones ----------
   function matrixBlock(title, sub, m, total, rgb, mode, cnt) {
@@ -279,7 +289,7 @@ FC.ui = (function () {
   function bilanText() {
     const half = +$('b-half').value, b = FC.stats.bilan(FC.store.all(), half), out = [];
     out.push('BILAN — ' + ($('b-half').selectedOptions[0].textContent));
-    [['NOTRE JEU', b.nous], ['LEUR JEU', b.eux], ['DUEL', b.duel]].forEach(function (g) {
+    [['NOTRE JEU', b.nous], ['LEUR JEU', b.eux], ['NOUS FACE À EUX', b.duel]].forEach(function (g) {
       out.push('', g[0]); g[1].forEach(function (it) { out.push(ICON[it.tone] + ' ' + it.text); });
     });
     out.push('', 'MOMENTUM', FC.momentum.summary(FC.momentum.compute(FC.store.all(), half, +$('mo-win').value)));

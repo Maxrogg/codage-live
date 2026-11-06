@@ -85,9 +85,11 @@
     <label>Filtre <select id="f-result"><option value="all">toutes</option><option value="ok">réussies</option><option value="ko">manquées</option></select></label>
     <label>Période <select id="f-half"><option value="0">match entier</option><option value="1">1re mi-temps</option><option value="2">2e mi-temps</option></select></label>
   </div>
+  <details class="howto"><summary>Comment lire ces cartes</summary>
   <p class="sub keyline">Nous attaquons toujours vers la droite. Pointillé = raté. Croix rouge = perte de Nous (= récup d'Eux), croix bleue = perte d'Eux (= récup de Nous). Clique une petite carte pour l'agrandir.</p>
   <p id="diff-key" class="sub keyline" hidden>Carte sûr / à risque — <b>couleur</b> : <b class="n">bleu</b> = zone plus sûre que la moyenne · gris = dans la moyenne · <b style="color:var(--perte)">rouge</b> = plus de pertes que la moyenne. <b>Intensité</b> = volume : une zone à 2 passes reste invisible, une zone à 70 passes ressort fort.</p>
   <p id="duel-key" class="sub keyline" hidden>Erreurs techniques = passes ou conduites ratées : « Nos pertes » = nos ballons perdus ainsi, « Nos récupérations » = ceux que l'adversaire perd ainsi. Duels = ce que tu codes avec <kbd>Z</kbd> (gagné) et <kbd>E</kbd> (perdu). Carte des duels — <b class="n">bleu / froid</b> = on y gagne plus de duels que d'habitude · gris = dans la moyenne · <b style="color:var(--perte)">rouge / chaud</b> = on y en perd plus. Petits points = chaque duel. Intensité = nombre de duels.</p>
+  </details>
   <div id="an-grid" class="maps"></div>
   <details id="an-det" class="card"><summary>Tableaux par zones (4 zones × 5 couloirs)</summary>
     <div class="maps two">
@@ -127,7 +129,7 @@
   <div class="bilan">
     <section class="card"><h2>Notre jeu</h2><ul id="bi-nous" class="insights"></ul></section>
     <section class="card"><h2>Leur jeu</h2><ul id="bi-eux" class="insights"></ul></section>
-    <section class="card"><h2>Duel</h2><ul id="bi-duel" class="insights"></ul></section>
+    <section class="card"><h2>Nous face à Eux</h2><ul id="bi-duel" class="insights"></ul></section>
   </div>
 </main>
 

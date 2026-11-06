@@ -48,7 +48,7 @@ header nav button.tab.on, header nav button.tab.on:hover:not(:disabled) { color:
 header .sub { color: var(--chalk2); }
 header button.ghost { background: transparent; border-color: var(--yellow); color: var(--yellow); padding: 5px 12px; font-weight: 600; }
 header button.ghost:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
-header #count { margin-left: auto; font-variant-numeric: tabular-nums; }
+header #count { margin-left: auto; font-variant-numeric: tabular-nums; padding-right: 14px; border-right: 1px solid rgba(255, 255, 255, .16); }
 .flash { opacity: 0; transition: opacity .2s; font-size: 12px; color: var(--chalk); background: rgba(255, 255, 255, .14); padding: 3px 10px; border-radius: 99px; }
 .flash:empty { display: none; }
 .flash.on { opacity: 1; }
@@ -86,7 +86,7 @@ input:hover { border-color: var(--ink2); }
 .stage canvas, .maps canvas { width: 100%; display: block; border-radius: 8px; background: var(--pitch); cursor: crosshair; }
 .stage canvas { margin: 8px; width: calc(100% - 16px); box-shadow: 0 0 0 8px var(--turf), 0 16px 30px -14px rgba(0, 0, 0, .55); border-radius: 7px; }
 .maps canvas { cursor: default; }
-.hint { margin: 18px 0 0; padding: 10px 16px; background: var(--surface); border: 1px solid var(--rule); border-left: 5px solid var(--yellow); border-radius: 10px; min-height: 44px; line-height: 1.9; box-shadow: var(--shadow); }
+.hint { margin: 18px 0 0; padding: 8px 16px; font-size: 13px; background: var(--surface); border: 1px solid var(--rule); border-left: 5px solid var(--yellow); border-radius: 10px; min-height: 44px; line-height: 1.9; box-shadow: var(--shadow); }
 
 aside { display: grid; gap: 14px; }
 /* tableau d'affichage : noir, chrono jaune, c'est LE point fort de l'écran */
@@ -163,9 +163,12 @@ button.chip.on { background: var(--turf); color: var(--yellow); box-shadow: 0 1p
 .bilan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 #view-bilan { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 14px; align-items: start; }
 #view-bilan > .filters, #view-bilan > .bilan, #view-bilan > .wide { grid-column: 1 / -1; margin: 0; }
-.insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.insights li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; padding: 9px 11px; border-radius: 8px; background: var(--surface2); border-left: 4px solid var(--rule); }
-.insights li.tone-good { border-left-color: var(--good); } .insights li.tone-warn { border-left-color: var(--warn); }
+.insights { list-style: none; margin: 0; padding: 0; display: grid; }
+.insights li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; padding: 9px 0; border-top: 1px solid var(--rule); line-height: 1.4; }
+.insights li:first-child { border-top: 0; padding-top: 2px; }
+.insights li .ic { color: var(--ink2); text-align: center; }
+.insights li.tone-good .ic { color: var(--good); } .insights li.tone-warn .ic { color: var(--warn); }
+.insights li.tone-warn { font-weight: 500; }
 .insights .ic { font-weight: 700; }
 
 /* matchs */
@@ -187,3 +190,31 @@ table.cmp tr.grp td { color: var(--ink); font: 600 14px var(--display); backgrou
   header { gap: 12px; padding: 0 12px; overflow-x: auto; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ----- fiche de match « stats TV » ----- */
+.facts { display: grid; font-variant-numeric: tabular-nums; }
+.facts .fh { display: flex; justify-content: space-between; font: 600 15px/1 var(--display); padding-bottom: 8px; }
+.facts .fr { display: grid; grid-template-columns: minmax(64px, auto) 1fr minmax(64px, auto); align-items: baseline; column-gap: 10px; padding: 9px 0 0; }
+.facts .fr + .fr:not(.minor) { border-top: 1px solid var(--rule); margin-top: 8px; }
+.facts .fr .l { text-align: center; color: var(--ink2); font-size: 12.5px; }
+.facts .fr .v { font: 600 18px/1.1 var(--display); }
+.facts .fr .v.e, .facts .fr > .v:nth-child(3) { text-align: right; }
+.facts .fr .v .sub { font: 400 11.5px var(--body); margin-left: 3px; }
+.facts .bar { grid-column: 1 / -1; display: flex; height: 5px; margin-top: 7px; border-radius: 3px; overflow: hidden; background: var(--eux); }
+.facts .bar i { display: block; background: var(--nous); border-right: 2px solid var(--surface); }
+.facts .bar.empty { background: var(--rule); } .facts .bar.empty i { background: transparent; border: 0; }
+.facts .fr.minor { padding-top: 4px; }
+.facts .fr.minor .v { font: 400 13px/1.2 var(--body); color: var(--ink2); }
+.facts .fr.minor .l { font-size: 11.5px; }
+#live-stats .facts .fr .v { font-size: 16px; }
+
+/* ----- analyse : légende repliée ----- */
+details.howto { margin: 0 0 14px; }
+details.howto > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font: 500 13px var(--display); color: var(--ink2);
+  padding: 5px 12px; border: 1px solid var(--rule); border-radius: 99px; background: var(--surface); list-style: none; }
+details.howto > summary::-webkit-details-marker { display: none; }
+details.howto > summary::before { content: "?"; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--turf); color: var(--yellow); font: 700 11px/1 var(--display); }
+details.howto[open] > summary { color: var(--ink); border-color: var(--ink2); }
+details.howto > p { margin: 10px 0 0; padding: 0 2px; }
+.maps .pan h2 { font-size: 14px; }
+#an-stats .facts { max-width: 760px; margin: 0 auto; }
