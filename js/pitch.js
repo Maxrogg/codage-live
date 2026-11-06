@@ -13,8 +13,13 @@ FC.pitch = (function () {
     return flip ? [L - x, W - y] : [x, y];
   }
 
-  function bg(ctx, g, color) {
+  // Fond + bandes de tonte très discrètes (14 bandes, 1 sur 2 légèrement plus foncée).
+  function bg(ctx, g, color, stripe) {
     ctx.fillStyle = color; ctx.fillRect(0, 0, g.cw, g.ch);
+    if (!stripe) return;
+    const n = 14, w = L / n * g.s;
+    ctx.fillStyle = stripe;
+    for (let i = 0; i < n; i += 2) ctx.fillRect(g.ox + i * w, g.oy, w, W * g.s);
   }
 
   function lines(ctx, g, color) {

@@ -105,6 +105,8 @@ FC.ui = (function () {
     ev.slice(-8).reverse().forEach(function (e) {
       const li = el('li', e.team === 'N' ? 'n' : 'e'); li.textContent = describe(e); list.appendChild(li);
     });
+    const rs = FC.store.resultOf(FC.store.current());
+    $('sb-n').textContent = rs ? rs.sn : 0; $('sb-e').textContent = rs ? rs.se : 0;
     statsTable($('live-stats'), 0, true);
   }
   function tick() {

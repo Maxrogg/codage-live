@@ -9,7 +9,7 @@ FC.viz = (function () {
   }
   function pal() {
     return { pitch: css('--pitch', '#f3f2ee'), line: css('--pitch-line', '#b4b2a8'), ink: css('--ink', '#0b0b0b'), ink2: css('--ink2', '#52514e'),
-      surface: css('--surface', '#ffffff'), N: css('--nous', '#2a78d6'), E: css('--eux', '#eb6834'),
+      surface: css('--surface', '#ffffff'), stripe: css('--pitch-stripe', 'rgba(0,0,0,0.035)'), N: css('--nous', '#2a78d6'), E: css('--eux', '#eb6834'),
       ND: css('--nous-d', '#12a39a'), ED: css('--eux-d', '#b8439b'), R: css('--perte', '#d22f2f') };
   }
   // Perte de Nous = rouge (= récup adverse) ; perte d'Eux = bleu (= notre récup).
@@ -186,7 +186,7 @@ FC.viz = (function () {
   }
   function drawAnalysis(canvas, team, events, half, layer, result) {
     const f = fit(canvas), ctx = f.ctx, g = f.g, P = pal();
-    P_.bg(ctx, g, P.pitch);
+    P_.bg(ctx, g, P.pitch, P.stripe);
     if (layer === 'diff') {
       const play = layerEvents(events, team, half, 'jeu', 'all'), lose = layerEvents(events, team, half, 'perte', 'all');
       const info = '(' + play.length + ' passes · ' + lose.length + ' pertes)';
@@ -214,7 +214,7 @@ FC.viz = (function () {
   // ---- vue live ----
   function drawLive(canvas, st) {
     const f = fit(canvas), ctx = f.ctx, g = f.g, P = pal();
-    P_.bg(ctx, g, P.pitch); P_.lines(ctx, g, P.line);
+    P_.bg(ctx, g, P.pitch, P.stripe); P_.lines(ctx, g, P.line);
     const recent = st.events.slice(-C.recentShown).concat(st.prov ? [st.prov.ev] : []);
     recent.forEach(function (e, i) {
       const age = recent.length - 1 - i;

@@ -11,7 +11,7 @@
 </head>
 <body>
 <header>
-  <h1>Codage live</h1>
+  <h1><svg class="mark" viewBox="0 0 32 20" aria-hidden="true"><rect x="1" y="1" width="30" height="18" rx="2"/><line x1="16" y1="1" x2="16" y2="19"/><circle cx="16" cy="10" r="3.4"/><rect x="1" y="5.5" width="4.6" height="9"/><rect x="26.4" y="5.5" width="4.6" height="9"/></svg>Codage live</h1>
   <nav>
     <button id="tab-live" class="tab on">Codage</button>
     <button id="tab-analysis" class="tab">Analyse</button>
@@ -29,48 +29,51 @@
     <p id="hint" class="hint"></p>
   </section>
   <aside>
-    <div class="card clockcard">
+    <div class="board">
+      <div class="board-top"><span id="half"></span><span id="dir"></span></div>
       <div id="clock" class="clock">00:00</div>
-      <div class="sub"><span id="half"></span> · <span id="dir"></span></div>
+      <div class="scoreline"><span class="sl-t n">Nous</span><b id="sb-n">0</b><i>–</i><b id="sb-e">0</b><span class="sl-t e">Eux</span></div>
       <div class="row">
-        <button id="btn-clock">▶ Chrono</button>
+        <button id="btn-clock" class="pri">▶ Chrono</button>
         <button id="btn-half">Mi-temps</button>
         <button id="btn-flip" title="Inverser le sens du terrain">⇄ Sens</button>
         <button id="btn-zero" title="Efface les événements, le score et le chrono de CE match">Remettre à zéro</button>
       </div>
     </div>
-    <div class="card matchcard">
-      <h2>Match</h2>
-      <div class="fields">
-        <label>Adversaire <input id="m-adv" type="text" placeholder="ex. FC Annecy" autocomplete="off"></label>
-        <label>Date <input id="m-date" type="date"></label>
-      </div>
-      <div class="fields score">
-        <span class="n">Nous</span><input id="m-sn" type="number" min="0" max="30" inputmode="numeric">
-        <span>–</span><input id="m-se" type="number" min="0" max="30" inputmode="numeric"><span class="e">Eux</span>
-        <button id="m-fill" title="Reprendre les buts codés comme score">Buts codés</button>
-        <span id="m-res" class="badge"></span>
-      </div>
-    </div>
-    <div class="card"><div id="live-stats"></div></div>
-    <div class="card"><h2>Derniers événements</h2><ul id="recent" class="recent"></ul>
-      <div class="row">
-        <button id="btn-undo">Annuler (Ctrl+Z)</button>
-      </div>
-    </div>
-    <div class="card"><h2>Raccourcis</h2><table class="legend"><tbody id="legend"></tbody></table></div>
-    <div class="card">
-      <h2>Données</h2>
-      <p class="sub" id="save-note">Sauvegarde automatique à chaque événement.</p>
-      <div class="row">
-        <button id="btn-dl-csv">Télécharger CSV</button>
-        <button id="btn-dl-all">Sauvegarde complète (JSON)</button>
-        <button id="btn-import" title="Recharger une sauvegarde JSON (autre appareil, autre version de l'outil)">Importer une sauvegarde</button>
-        <input id="file-import" type="file" accept=".json,application/json" hidden>
-        <button id="btn-json">Copier JSON</button>
-        <button id="btn-csv">Copier CSV</button>
-        <button id="btn-reset">Nouveau match</button>
-      </div>
+    <div class="sheet">
+      <section class="matchcard">
+        <h2>Match</h2>
+        <div class="fields">
+          <label>Adversaire <input id="m-adv" type="text" placeholder="ex. FC Annecy" autocomplete="off"></label>
+          <label>Date <input id="m-date" type="date"></label>
+        </div>
+        <div class="fields score">
+          <span class="n">Nous</span><input id="m-sn" type="number" min="0" max="30" inputmode="numeric">
+          <span>–</span><input id="m-se" type="number" min="0" max="30" inputmode="numeric"><span class="e">Eux</span>
+          <button id="m-fill" title="Reprendre les buts codés comme score">Buts codés</button>
+          <span id="m-res" class="badge"></span>
+        </div>
+      </section>
+      <section><div id="live-stats"></div></section>
+      <section><h2>Derniers événements</h2><ul id="recent" class="recent"></ul>
+        <div class="row">
+          <button id="btn-undo">Annuler (Ctrl+Z)</button>
+        </div>
+      </section>
+      <details class="fold" open><summary>Raccourcis</summary><table class="legend"><tbody id="legend"></tbody></table></details>
+      <details class="fold">
+        <summary>Données et sauvegardes</summary>
+        <p class="sub" id="save-note">Sauvegarde automatique à chaque événement.</p>
+        <div class="row">
+          <button id="btn-dl-csv">Télécharger CSV</button>
+          <button id="btn-dl-all">Sauvegarde complète (JSON)</button>
+          <button id="btn-import" title="Recharger une sauvegarde JSON (autre appareil, autre version de l'outil)">Importer une sauvegarde</button>
+          <input id="file-import" type="file" accept=".json,application/json" hidden>
+          <button id="btn-json">Copier JSON</button>
+          <button id="btn-csv">Copier CSV</button>
+          <button id="btn-reset">Nouveau match</button>
+        </div>
+      </details>
     </div>
   </aside>
 </main>
