@@ -26,7 +26,7 @@ const o=[
  {kind:'pass',team:'N',x:20,y:20,x2:60,y2:34,ok:false,half:1,t:400000},      // ratée -> perte N + récup E (dérivées)
  {kind:'shot',team:'E',x:20,y:34,res:'but',half:1,t:405000}];               // transition
 let so=S.shotOrigins(o,'N',0), se=S.shotOrigins(o,'E',0);
-assert.deepStrictEqual(so,{n:3,transition:1,deseq:1,autre:1}); assert.deepStrictEqual(se,{n:2,transition:2,deseq:0,autre:0});
+assert.deepStrictEqual(so,{n:3,transition:1,deseq:1,cpa:0,autre:1}); assert.deepStrictEqual(se,{n:2,transition:2,deseq:0,cpa:0,autre:0});
 // --- sans chrono (t=0) : fenêtre = 3 événements précédents
 const z=[{kind:'recup',team:'N',x:60,y:34,half:1,t:0},{kind:'pass',team:'N',x:1,y:1,x2:2,y2:2,ok:true,half:1,t:0},
  {kind:'pass',team:'N',x:1,y:1,x2:2,y2:2,ok:true,half:1,t:0},{kind:'shot',team:'N',x:95,y:34,half:1,t:0},   // recup à 3 positions -> transition

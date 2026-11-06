@@ -62,7 +62,7 @@ FC.stats = (function () {
   function shotOrigins(events, team, half) {
     const seq = [];
     events.forEach(function (e) { seq.push(e); derivedOf(e).forEach(function (d) { seq.push(d); }); });
-    const out = { n: 0, transition: 0, deseq: 0, autre: 0 };
+    const out = { n: 0, transition: 0, deseq: 0, cpa: 0, autre: 0 };
     seq.forEach(function (s, k) {
       if (s.kind !== 'shot' || s.team !== team || (half && s.half !== half)) return;
       out.n++;
@@ -70,6 +70,7 @@ FC.stats = (function () {
       for (let j = k - 1; j >= 0; j--) {
         const e = seq[j], timed = (s.t > 0 || e.t > 0);
         if (timed ? (s.t - e.t > C.originMs) : (k - j > C.originEvents)) break;
+        if (e.team === team && e.kind === 'cpa') { found = 'cpa'; break; }
         if ((e.team === team && e.kind === 'recup') || (e.team !== team && e.kind === 'perte')) { found = 'transition'; break; }
         if (e.team === team && DESEQ.indexOf(e.kind) >= 0 && e.ok) { found = 'deseq'; break; }
       }
@@ -77,6 +78,40 @@ FC.stats = (function () {
     });
     return out;
   }
+
+  // ---- CPA ----
+  // Type déduit de la position (repère de l'équipe qui tire le CPA).
+  function cpaType(team, x, y) {
+    const nx = team === 'N' ? x : L - x;
+    if ((nx < 7 || nx > L - 7) && (y < 7 || y > W - 7)) return 'corner';
+    if (y < 3 || y > W - 3) return 'touche';
+    return 'cf';
+  }
+  // Liste des CPA d'une équipe, avec leur suite : out = 'but' | 'frappe' | null (frappe de la même équipe juste après).
+  function cpaList(events, team, half) {
+    const out = [];
+    events.forEach(function (e, k) {
+      if (e.kind !== 'cpa' || (team && e.team !== team) || (half && e.half !== half)) return;
+      const c = Object.assign({}, e, { type: e.cpa || cpaType(e.team, e.x, e.y), out: null });
+      for (let j = k + 1; j < events.length; j++) {
+        const f = events[j], timed = (f.t > 0 || e.t > 0);
+        if (timed ? (f.t - e.t > C.cpaMs) : (j - k > C.cpaEvents)) break;
+        if (f.kind === 'cpa') break;
+        if (f.kind === 'shot' && f.team === e.team) { c.out = f.res === 'but' ? 'but' : 'frappe'; break; }
+      }
+      out.push(c);
+    });
+    return out;
+  }
+  // ---- xG : probabilité qu'une frappe finisse au fond, selon distance et angle (repère de l'équipe qui tire) ----
+  function xg(e) {
+    const X = C.xg, nx = e.team === 'N' ? e.x : L - e.x, dx = Math.max(0.5, L - nx), dy = e.y - W / 2;
+    let ang = Math.atan2(7.32 * dx, dx * dx + dy * dy - 3.66 * 3.66); if (ang < 0) ang += Math.PI;
+    const z = X.b0 + X.a * ang + X.d * Math.hypot(dx, dy);
+    return 1 / (1 + Math.exp(-z));
+  }
+  function r1(v) { return Math.round(v * 10) / 10; }
+  function fr1(v) { return String(r1(v)).replace('.', ','); }
 
   // Duels = récupérations / pertes codées à la main (Z / E), à ne pas confondre avec celles déduites d'une passe ratée.
   // Gagné = récup de Nous (Z), perdu = perte de Nous (E).
@@ -123,7 +158,12 @@ FC.stats = (function () {
       recup: { n: rec.length, haute: rt[2], milieu: rt[1], basse: rt[0], surRate: rec.filter(function (e) { return e.derived === 'pass'; }).length },
       perte: { n: per.length, ownThird: pt[0], milieu: pt[1], att: pt[2], surRate: per.filter(function (e) { return e.derived === 'pass'; }).length },
       shots: { n: sh.length, cadre: cad, but: but, hors: sh.length - cad - but, pctCadre: pct(cad + but, sh.length),
-        surface: sh.filter(function (e) { return inBox(team, e.x, e.y); }).length, eff: pct(but, sh.length) },
+        surface: sh.filter(function (e) { return inBox(team, e.x, e.y); }).length, eff: pct(but, sh.length),
+        xg: r1(sh.reduce(function (t, e) { return t + xg(e); }, 0)) },
+      cpa: (function () {
+        const l = cpaList(events, team, half), c = function (k, v) { return l.filter(function (x) { return x[k] === v; }).length; };
+        return { n: l.length, corner: c('type', 'corner'), cf: c('type', 'cf'), touche: c('type', 'touche'), frappes: l.filter(function (x) { return x.out; }).length, buts: c('out', 'but') };
+      })(),
       entrees: entries(events, team, half),
       // duels vus de l'équipe : récup ou perte qui ne vient pas d'une passe ratée (codée Z / E, ou son reflet)
       duels: (function () {
@@ -222,8 +262,8 @@ FC.stats = (function () {
       if (o.n >= 2) {
         const hi = o.transition / o.n >= 0.4;
         push(hi ? (nous ? 'good' : 'warn') : 'info', nous
-          ? 'Origine de nos frappes : au moins ' + o.transition + '/' + o.n + ' après une de nos récups ou une perte adverse (≤ ' + (C.originMs / 1000) + ' s), ' + o.deseq + ' après un déséquilibre.'
-          : 'Origine de leurs frappes : au moins ' + o.transition + '/' + o.n + ' viennent d\'une de nos pertes ou d\'une de leurs récups (≤ ' + (C.originMs / 1000) + ' s), ' + o.deseq + ' après un déséquilibre.');
+          ? 'Origine de nos frappes : au moins ' + o.transition + '/' + o.n + ' après une de nos récups ou une perte adverse (≤ ' + (C.originMs / 1000) + ' s), ' + o.deseq + ' après un déséquilibre' + (o.cpa ? ', ' + o.cpa + ' sur CPA' : '') + '.'
+          : 'Origine de leurs frappes : au moins ' + o.transition + '/' + o.n + ' viennent d\'une de nos pertes ou d\'une de leurs récups (≤ ' + (C.originMs / 1000) + ' s), ' + o.deseq + ' après un déséquilibre' + (o.cpa ? ', ' + o.cpa + ' sur CPA' : '') + '.');
       }
     }
     if (sum.entrees.tiers || sum.entrees.surf) push('info', sum.entrees.tiers + ' entrée(s) dans le dernier tiers, ' + sum.entrees.surf + ' dans la surface.');
@@ -240,6 +280,12 @@ FC.stats = (function () {
       if (a.passes.n >= 5 && b.passes.n >= 5) duel.push({ tone: 'info', text: 'Réussite des passes : Nous ' + a.passes.pct + '% – ' + b.passes.pct + '% Eux.' });
       duel.push({ tone: 'info', text: 'Frappes : Nous ' + a.shots.n + ' (' + (a.shots.cadre + a.shots.but) + ' cadrées) – ' + b.shots.n + ' (' + (b.shots.cadre + b.shots.but) + ' cadrées) Eux.' });
     }
+    if (a.shots.n + b.shots.n) {
+      const dN = a.shots.but - a.shots.xg, msg = 'xG (qualité des frappes) : Nous ' + fr1(a.shots.xg) + ' – ' + fr1(b.shots.xg) + ' Eux. Buts : ' + a.shots.but + ' – ' + b.shots.but + '.';
+      duel.push({ tone: a.shots.xg > b.shots.xg + 0.5 ? 'good' : b.shots.xg > a.shots.xg + 0.5 ? 'warn' : 'info', text: msg +
+        (a.shots.n >= 4 && dN <= -1 ? ' On a marqué moins que nos occasions le laissaient attendre.' : a.shots.n >= 4 && dN >= 1 ? ' On a marqué plus que nos occasions le laissaient attendre.' : '') });
+    }
+    if (a.cpa.n + b.cpa.n) duel.push({ tone: 'info', text: 'CPA : Nous ' + a.cpa.n + ' (' + a.cpa.frappes + ' suivis d\'une frappe, ' + a.cpa.buts + ' but) – Eux ' + b.cpa.n + ' (' + b.cpa.frappes + ' frappe, ' + b.cpa.buts + ' but).' });
     if (a.duels.n >= 4) duel.push({ tone: a.duels.pct > 50 ? 'good' : a.duels.pct < 50 ? 'warn' : 'info',
       text: 'Duels (Z / E) : Nous ' + a.duels.won + ' gagnés sur ' + a.duels.n + ' (' + a.duels.pct + '%).' });
     return { n: n, nous: teamInsights(events, 'N', half), eux: teamInsights(events, 'E', half), duel: duel };
@@ -252,9 +298,9 @@ FC.stats = (function () {
       deseqN: a.deseq.total, passPctN: a.passes.pct, perteOwnN: a.perte.ownThird, recupHauteN: a.recup.haute,
       shotsN: a.shots.n, cadN: a.shots.cadre + a.shots.but, shotsBoxN: a.shots.surface, entTiersN: a.entrees.tiers, entSurfN: a.entrees.surf,
       shotsE: b.shots.n, cadE: b.shots.cadre + b.shots.but, entSurfE: b.entrees.surf, deseqE: b.deseq.total,
-      butsN: a.shots.but, butsE: b.shots.but
+      butsN: a.shots.but, butsE: b.shots.but, xgN: a.shots.xg, xgE: b.shots.xg, cpaShotN: a.cpa.frappes, cpaShotE: b.cpa.frappes
     };
   }
 
-  return { duels: duels, entries: entries, shotOrigins: shotOrigins, timeline: timeline, kpis: kpis, inBox: inBox, rel: rel, zone: zone, withDerived: withDerived, perteMatrix: perteMatrix, ratioMatrix: ratioMatrix, bilan: bilan, isPass: isPass, byResult: byResult, select: select, summary: summary, zoneMatrix: zoneMatrix, DESEQ: DESEQ };
+  return { cpaList: cpaList, cpaType: cpaType, xg: xg, fr1: fr1, duels: duels, entries: entries, shotOrigins: shotOrigins, timeline: timeline, kpis: kpis, inBox: inBox, rel: rel, zone: zone, withDerived: withDerived, perteMatrix: perteMatrix, ratioMatrix: ratioMatrix, bilan: bilan, isPass: isPass, byResult: byResult, select: select, summary: summary, zoneMatrix: zoneMatrix, DESEQ: DESEQ };
 })();

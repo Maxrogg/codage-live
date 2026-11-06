@@ -49,6 +49,7 @@ FC.input = (function () {
       }
       commit();
     }
+    if (S.down.has(K.cpa)) return add({ kind: 'cpa', team: team, x: x, y: y, cpa: FC.stats.cpaType(team, x, y) });
     if (S.down.has(K.frappe)) return hold({ kind: 'shot', team: team, x: x, y: y, res: 'hors' }, p);
     if (!S.pending) { autoStart(); S.pending = { team: team, x: x, y: y, kind: modKind(e) }; return onUpdate(); }
     const q = S.pending;

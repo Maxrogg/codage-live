@@ -28,8 +28,11 @@ FC.ui = (function () {
       ['Entrées dans la surface', function (s) { return s.entrees.surf; }, 0, function (s) { return s.entrees.surf; }],
       ['Entrées dernier tiers', function (s) { return s.entrees.tiers; }, 1],
       ['Frappes', function (s) { return s.shots.n + sub((s.shots.cadre + s.shots.but) + ' cadr.'); }, 0, function (s) { return s.shots.n; }],
+      ['xG (qualité des frappes)', function (s) { return s.shots.n ? FC.stats.fr1(s.shots.xg) : '–'; }, 0, function (s) { return s.shots.xg; }],
       ['dans la surface', function (s) { return s.shots.surface; }, 1],
       ['buts ÷ frappes', function (s) { return s.shots.eff == null ? '–' : s.shots.eff + '%'; }, 1],
+      ['CPA', function (s) { return s.cpa.n + (s.cpa.n ? sub(s.cpa.frappes + ' → frappe') : ''); }, 0, function (s) { return s.cpa.n; }],
+      ['corners · coups francs · touches', function (s) { return s.cpa.corner + ' · ' + s.cpa.cf + ' · ' + s.cpa.touche; }, 1],
       ['Duels gagnés (Z / E)', function (s) { return s.duels.n ? s.duels.won + sub(s.duels.pct + '%') : '–'; }, 0, function (s) { return s.duels.won; }],
       ['Récupérations', function (s) { return s.recup.n + sub('hautes ' + s.recup.haute); }, 0, function (s) { return s.recup.n; }],
       ['sur erreur technique adv.', function (s) { return s.recup.surRate; }, 1],
@@ -90,14 +93,16 @@ FC.ui = (function () {
   function hintText() {
     const S = FC.input.state(), K = C.keys, d = S.down;
     if (S.pending) return '<b>Départ posé (' + C.teams[S.pending.team].label + ').</b> Déplace le curseur, <kbd>Espace</kbd> = arrivée réussie, <kbd>Espace</kbd> ×2 = <b>ratée</b> · <kbd>Ctrl</kbd> passe déséq. · <kbd>Shift</kbd> conduite déséq. · <kbd>Échap</kbd> annule';
+    if (d.has(K.cpa)) return '<b>Mode CPA</b> — place le curseur à l\'endroit du ballon, <kbd>Espace</kbd> bref = <b class="n">Nous</b>, maintenu = <b class="e">Eux</b>. Corner, coup franc ou touche : déduit de la position';
     if (d.has(K.frappe)) return '<b>Mode frappe</b> — <kbd>Espace</kbd> = non cadrée, <kbd>Espace</kbd> ×2 = <b>cadrée</b>, puis <kbd>C</kbd> si but';
-    return 'Pad = déplacer · <kbd>Espace</kbd> bref = <b class="n">Nous</b> · <kbd>Espace</kbd> maintenu = <b class="e">Eux</b> · <kbd>Z</kbd> récup · <kbd>E</kbd> perte · <kbd>R</kbd>+<kbd>Espace</kbd> frappe · <kbd>Espace</kbd> ×2 = passe ratée / frappe cadrée';
+    return 'Pad = déplacer · <kbd>Espace</kbd> bref = <b class="n">Nous</b> · <kbd>Espace</kbd> maintenu = <b class="e">Eux</b> · <kbd>Z</kbd> récup · <kbd>E</kbd> perte · <kbd>R</kbd>+<kbd>Espace</kbd> frappe · <kbd>F</kbd>+<kbd>Espace</kbd> CPA · <kbd>Espace</kbd> ×2 = passe ratée / frappe cadrée';
   }
   function describe(e) {
     const kind = C.kinds[e.kind].label;
     let tag = '';
     if (C.kinds[e.kind].two) tag = e.ok ? ' ✓' : ' ✗';
-    if (e.kind === 'shot') tag = ' — ' + C.shotResults[e.res];
+    if (e.kind === 'shot') tag = ' — ' + C.shotResults[e.res] + ' (xG ' + FC.stats.fr1(FC.stats.xg(e)) + ')';
+    if (e.kind === 'cpa') tag = ' — ' + C.cpaTypes[e.cpa || FC.stats.cpaType(e.team, e.x, e.y)];
     return FC.clock.fmt(e.t) + ' · ' + C.teams[e.team].label + ' · ' + kind + tag;
   }
   function renderLive() {
@@ -133,9 +138,9 @@ FC.ui = (function () {
     diff:  { label: 'Sûr / à risque', cols: 2, layers: ['diff'] },
     rp:    { label: 'Pertes & duels', cols: 3, dense: false, layers: ['pertePasse', 'duel'] },
     jeu:   { label: 'Où ça passe', cols: 2, layers: ['jeu', 'arr'] },
-    shots: { label: 'Frappes', cols: 2, layers: ['shots'] }
+    shots: { label: 'Frappes & CPA', cols: 2, layers: ['shots', 'cpa'] }
   };
-  const LAYER_PRESET = { deseq: 'deseq', diff: 'diff', pertePasse: 'rp', duel: 'rp', jeu: 'jeu', arr: 'jeu', shots: 'shots' };
+  const LAYER_PRESET = { deseq: 'deseq', diff: 'diff', pertePasse: 'rp', duel: 'rp', jeu: 'jeu', arr: 'jeu', shots: 'shots', cpa: 'shots' };
   let preset = 'all', builtFor = null, panels = [];
 
   function buildPanels() {
@@ -193,9 +198,9 @@ FC.ui = (function () {
     ['Nous'],
     ['Déséquilibres réussis', 'deseqN', 1], ['Passes réussies (%)', 'passPctN', 1], ['Pertes dans notre tiers', 'perteOwnN', -1],
     ['Récupérations hautes', 'recupHauteN', 1], ['Entrées dernier tiers', 'entTiersN', 1], ['Entrées dans la surface', 'entSurfN', 1],
-    ['Frappes', 'shotsN', 1], ['Frappes cadrées', 'cadN', 1], ['Frappes dans la surface', 'shotsBoxN', 1], ['Buts', 'butsN', 1],
+    ['Frappes', 'shotsN', 1], ['Frappes cadrées', 'cadN', 1], ['Frappes dans la surface', 'shotsBoxN', 1], ['Buts', 'butsN', 1], ['xG', 'xgN', 1], ['CPA suivis d\'une frappe', 'cpaShotN', 1],
     ['Eux'],
-    ['Déséquilibres réussis', 'deseqE', -1], ['Entrées dans la surface', 'entSurfE', -1], ['Frappes', 'shotsE', -1], ['Frappes cadrées', 'cadE', -1], ['Buts', 'butsE', -1]
+    ['Déséquilibres réussis', 'deseqE', -1], ['Entrées dans la surface', 'entSurfE', -1], ['Frappes', 'shotsE', -1], ['Frappes cadrées', 'cadE', -1], ['xG', 'xgE', -1], ['CPA suivis d\'une frappe', 'cpaShotE', -1], ['Buts', 'butsE', -1]
   ];
   function avg(list, key) {
     const v = list.map(function (k) { return k[key]; }).filter(function (x) { return x != null; });
@@ -401,6 +406,7 @@ FC.ui = (function () {
       ['R + Espace', 'frappe non cadrée'],
       ['R + Espace ×2', 'frappe cadrée'],
       ['C après la frappe', 'c\'est un but'],
+      ['F + Espace', 'coup de pied arrêté (corner, coup franc, touche selon l\'endroit)'],
       ['Chrono', 'démarre tout seul au 1er geste de chaque mi-temps'],
       ['Échap', 'annule le geste en cours'],
       ['Ctrl + Z', 'annule le dernier événement']

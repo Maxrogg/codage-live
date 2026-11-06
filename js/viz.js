@@ -143,6 +143,11 @@ FC.viz = (function () {
     ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 2.5;
     if (ev.kind === 'recup') {
       ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.lineTo(x + 6.5, y + 5); ctx.lineTo(x - 6.5, y + 5); ctx.closePath(); ctx.fill();
+    } else if (ev.kind === 'cpa') {
+      const s = 6.5;
+      if (ev.out) { ring(ctx, x, y, s, P.surface); ctx.fillStyle = color; ctx.fillRect(x - s, y - s, 2 * s, 2 * s); }
+      else ctx.strokeRect(x - s, y - s, 2 * s, 2 * s);
+      if (ev.out === 'but') { ctx.fillStyle = P.surface; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill(); }
     } else if (ev.kind === 'shot') {
       if (ev.res === 'hors') { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke(); }
       else if (ev.res === 'cadre') { ring(ctx, x, y, 6, P.surface); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); }
@@ -170,6 +175,7 @@ FC.viz = (function () {
     arr: 'Où ça arrive (arrivées de passes)',
     pertePasse: 'Pertes sur erreurs techniques',
     duel: 'Duels gagnés / perdus',
+    cpa: 'Coups de pied arrêtés',
     perte: 'Pertes de balle',
     recup: 'Récupérations de balle',
     diff: 'Zones sûres / à risque',
@@ -193,6 +199,7 @@ FC.viz = (function () {
     if (layer === 'jeu' || layer === 'arr') return ev.filter(S_.isPass).filter(function (e) { return S_.byResult(e, result); });
     if (layer === 'deseq') return ev.filter(function (e) { return S_.DESEQ.indexOf(e.kind) >= 0 && S_.byResult(e, result); });
     if (layer === 'shots') return ev.filter(function (e) { return e.kind === 'shot'; });
+    if (layer === 'cpa') return S_.cpaList(events, team, half);
     return [];
   }
   function drawAnalysis(canvas, team, events, half, layer, result) {
@@ -239,7 +246,12 @@ FC.viz = (function () {
       heat(ctx, g, list.map(function (e) { return layer === 'arr' ? { x: e.x2, y: e.y2 } : { x: e.x, y: e.y }; }), hex);
     }
     P_.lines(ctx, g, P.line);
+    if (layer === 'shots') list.forEach(function (e) {   // halo proportionnel à l'xG : plus il est grand, plus l'occasion était bonne
+      const p = P_.toScreen(g, e.x, e.y, false), r = 7 + 26 * Math.sqrt(S_.xg(e));
+      ctx.save(); ctx.globalAlpha = 0.16; ctx.fillStyle = P[e.team]; ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    });
     if (!isHeat) list.forEach(function (e) { drawEvent(ctx, g, e, false, 0.78, P); });
+    if (layer === 'shots' && list.length) return '(' + list.length + ' · xG ' + S_.fr1(list.reduce(function (t, e) { return t + S_.xg(e); }, 0)) + ')';
     return '(' + list.length + ')';
   }
 
