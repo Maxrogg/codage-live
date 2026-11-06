@@ -40,6 +40,10 @@ FC.CONFIG = {
   timeBuckets: ['0–15', '15–30', '30–45', '45–60', '60–75', '75–90', '90+'],
   // Momentum = pression offensive de Nous moins celle d'Eux, sur une fenêtre glissante (minutes).
   // Chaque action vaut des points ; une entrée dans la surface remplace l'entrée dans le dernier tiers (pas de double compte).
-  momentum: { win: 5, neutral: 1, entSurf: 3, entTiers: 1, shot: 2, shotOn: 1, goal: 2, deseq: 3, recupHaute: 1.5 },
+  momentum: { win: 5, neutral: 1, entSurf: 3, entTiers: 1, shot: 2, shotOn: 1, goal: 2, deseq: 3, recupHaute: 1.5,
+    // Multiplicateurs de lieu. Frappe : par quart du terrain (0 = son camp ... 3 = dernier quart), cadrée ou non. But : bonus fixe.
+    shotCol: [1, 1, 1, 1.5],
+    // Déséquilibre réussi : par couloir d'ARRIVÉE (ext. gauche, int. gauche, axe, int. droit, ext. droit). L'axe vaut plus que la largeur.
+    deseqLane: [1, 1.25, 1.5, 1.25, 1] },
   recentShown: 16                          // nb d'événements gardés visibles en direct
 };

@@ -10,12 +10,12 @@ FC.momentum = (function () {
     if (C.kinds[e.kind].two && e.ok) {
       if (!S.inBox(e.team, e.x, e.y) && S.inBox(e.team, e.x2, e.y2)) w += M.entSurf;
       else if (S.rel(e.team, e.x, e.y).third < 2 && S.rel(e.team, e.x2, e.y2).third === 2) w += M.entTiers;
-      if (S.DESEQ.indexOf(e.kind) >= 0) w += M.deseq;
+      if (S.DESEQ.indexOf(e.kind) >= 0) w += M.deseq * M.deseqLane[S.zone(e.team, e.x2, e.y2).lane];
     }
     if (e.kind === 'shot') {
-      w += M.shot;
-      if (e.res === 'cadre') w += M.shotOn;
-      if (e.res === 'but') w += M.shotOn + M.goal;
+      const k = M.shotCol[S.zone(e.team, e.x, e.y).col];     // frappe dans le dernier quart : vaut plus (cadrée ou non)
+      w += (M.shot + (e.res === 'cadre' || e.res === 'but' ? M.shotOn : 0)) * k;
+      if (e.res === 'but') w += M.goal;
     }
     if (e.kind === 'recup' && S.rel(e.team, e.x, e.y).third === 2) w += M.recupHaute;
     return w;
