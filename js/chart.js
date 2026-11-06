@@ -26,5 +26,51 @@ FC.chart = (function () {
     });
     box.innerHTML = s + '</svg>';
   }
-  return { bars: bars };
+  // Courbe de momentum : aire bleue au-dessus de 0 (avantage Nous), orange en dessous (avantage Eux). d = FC.momentum.compute.
+  function momentum(box, d, title) {
+    const W = 900, H = 260, L = 40, R = 12, T = 24, B = 30, fmt = FC.momentum.fmt;
+    const maxAbs = d.points.reduce(function (m, p) { return Math.max(m, Math.abs(p.v)); }, 0);
+    const top = Math.max(6, Math.ceil(maxAbs / 2) * 2);
+    const X = function (x) { return L + (W - L - R) * x / d.total; };
+    const Y = function (v) { return T + (H - T - B) * (1 - (v + top) / (2 * top)); };
+    const y0 = Y(0);
+    let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(title) + '" style="display:block;max-width:1200px">' +
+      '<defs><clipPath id="fcm-up"><rect x="0" y="0" width="' + W + '" height="' + y0 + '"/></clipPath>' +
+      '<clipPath id="fcm-dn"><rect x="0" y="' + y0 + '" width="' + W + '" height="' + (H - y0) + '"/></clipPath></defs>';
+    [top, 0, -top].forEach(function (g) {
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(g) + '" y2="' + Y(g) + '" style="stroke:var(--rule)' + (g ? ';stroke-dasharray:3 3' : '') + '"/>';
+    });
+    s += '<text x="' + (L - 6) + '" y="' + (T + 4) + '" text-anchor="end" font-size="11" font-weight="600" style="fill:var(--nous)">Nous</text>' +
+      '<text x="' + (L - 6) + '" y="' + (H - B + 2) + '" text-anchor="end" font-size="11" font-weight="600" style="fill:var(--eux)">Eux</text>';
+    d.segs.forEach(function (sg, i) {
+      const pts = d.points.filter(function (p) { return p.half === sg.half; });
+      const line = pts.map(function (p) { return X(p.x) + ',' + Y(p.v); }).join(' ');
+      const area = X(pts[0].x) + ',' + y0 + ' ' + line + ' ' + X(pts[pts.length - 1].x) + ',' + y0;
+      s += '<polygon points="' + area + '" clip-path="url(#fcm-up)" style="fill:var(--nous);opacity:.85"/>' +
+        '<polygon points="' + area + '" clip-path="url(#fcm-dn)" style="fill:var(--eux);opacity:.85"/>' +
+        '<polyline points="' + line + '" fill="none" stroke-linejoin="round" style="stroke:var(--ink);stroke-width:1.2"/>';
+      for (let m = Math.ceil(sg.from / 15) * 15; m <= sg.to; m += 15) {
+        const x = X(sg.x0 + m);
+        s += '<line x1="' + x + '" x2="' + x + '" y1="' + (H - B) + '" y2="' + (H - B + 4) + '" style="stroke:var(--ink2)"/>' +
+          '<text x="' + x + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" style="fill:var(--ink2)">' + m + '\'</text>';
+      }
+      if (i > 0) {
+        const xm = X(sg.x0 + sg.from) - (W - L - R) * 1.5 / d.total;
+        s += '<line x1="' + xm + '" x2="' + xm + '" y1="' + T + '" y2="' + (H - B) + '" style="stroke:var(--ink2);stroke-dasharray:2 4"/>';
+      }
+    });
+    d.goals.forEach(function (g) {
+      const x = X(g.x), up = g.team === 'N', cy = up ? T - 9 : H - B + 9;
+      s += '<line x1="' + x + '" x2="' + x + '" y1="' + T + '" y2="' + (H - B) + '" style="stroke:var(' + (up ? '--nous' : '--eux') + ');stroke-width:1;opacity:.6"/>' +
+        '<circle cx="' + x + '" cy="' + (up ? T - 8 : H - B + 14) + '" r="5" style="fill:var(--surface);stroke:var(' + (up ? '--nous' : '--eux') + ');stroke-width:2"><title>But ' +
+        (up ? 'de Nous' : 'd\'Eux') + ' à ' + g.min + '\'</title></circle>';
+    });
+    const bw = (W - L - R) / d.total;
+    d.points.forEach(function (p) {
+      s += '<rect x="' + (X(p.x) - bw / 2) + '" y="' + T + '" width="' + bw + '" height="' + (H - T - B) + '" fill="transparent"><title>' + p.min + '\' : ' +
+        (p.v > 0 ? 'avantage Nous +' + fmt(p.v) : p.v < 0 ? 'avantage Eux +' + fmt(-p.v) : 'équilibre') + ' (Nous ' + fmt(p.n) + ' · Eux ' + fmt(p.e) + ')</title></rect>';
+    });
+    box.innerHTML = s + '</svg>';
+  }
+  return { bars: bars, momentum: momentum };
 })();

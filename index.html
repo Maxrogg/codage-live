@@ -103,6 +103,14 @@
     <span class="sub">✓ point positif · ⚠ à surveiller · • info. Lecture automatique des chiffres codés : à toi de juger.</span>
     <span id="bi-note" class="sub"></span>
   </div>
+  <section class="card wide">
+    <h2>Momentum : qui domine, minute après minute</h2>
+    <div class="filters">
+      <label>Fenêtre <select id="mo-win"><option value="3">3 min</option><option value="5" selected>5 min</option><option value="10">10 min</option></select></label>
+      <span class="sub"><b class="n">■</b> avantage Nous · <b class="e">■</b> avantage Eux · ○ but</span>
+    </div>
+    <div id="mo-chart"></div><p id="mo-note" class="sub"></p><p id="mo-rule" class="sub"></p>
+  </section>
   <section class="card"><div id="bi-stats"></div></section>
   <section class="card">
     <h2>Évolution par tranches de 15 min</h2>
@@ -146,6 +154,7 @@
 <script src="js/pitch.js"></script>
 <script src="js/stats.js"></script>
 <script src="js/viz.js"></script>
+<script src="js/momentum.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/input.js"></script>
