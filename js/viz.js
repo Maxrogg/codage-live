@@ -168,7 +168,7 @@ FC.viz = (function () {
   const LAYERS = {
     jeu: 'Où ça part (départs de passes)',
     arr: 'Où ça arrive (arrivées de passes)',
-    pertePasse: 'Pertes sur passes ratées',
+    pertePasse: 'Pertes sur erreurs techniques',
     duel: 'Duels gagnés / perdus',
     perte: 'Pertes de balle',
     recup: 'Récupérations de balle',
@@ -179,7 +179,8 @@ FC.viz = (function () {
   // Titre d'une carte (Eux : ses pertes sur passes = nos récupérations sur leurs erreurs).
   function layerTitle(layer, team) {
     if (layer === 'duel') return LAYERS.duel;
-    return (team === 'N' ? 'Nous' : 'Eux') + ' — ' + LAYERS[layer] + (layer === 'pertePasse' && team === 'E' ? ' (= nos récups)' : '');
+    if (layer === 'pertePasse') return team === 'N' ? 'Nos pertes - Sur erreurs techniques' : 'Nos récupérations - Sur erreurs techniques de l\'ADV';
+    return (team === 'N' ? 'Nous' : 'Eux') + ' — ' + LAYERS[layer];
   }
   function layerEvents(events, team, half, layer, result) {
     if (layer === 'pertePasse') {
