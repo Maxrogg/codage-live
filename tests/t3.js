@@ -32,7 +32,7 @@ const z=[{kind:'recup',team:'N',x:60,y:34,half:1,t:0},{kind:'pass',team:'N',x:1,
  {kind:'pass',team:'N',x:1,y:1,x2:2,y2:2,ok:true,half:1,t:0},{kind:'shot',team:'N',x:95,y:34,half:1,t:0},   // recup à 3 positions -> transition
  {kind:'pass',team:'N',x:1,y:1,x2:2,y2:2,ok:true,half:1,t:0},{kind:'pass',team:'N',x:1,y:1,x2:2,y2:2,ok:true,half:1,t:0},
  {kind:'pass',team:'N',x:1,y:1,x2:2,y2:2,ok:true,half:1,t:0},{kind:'shot',team:'N',x:95,y:34,half:1,t:0}];  // trop loin -> autre
-assert.deepStrictEqual(S.shotOrigins(z,'N',0),{n:2,transition:1,deseq:0,autre:1});
+assert.deepStrictEqual(S.shotOrigins(z,'N',0),{n:2,transition:1,deseq:0,cpa:0,autre:1});
 // --- timeline
 const tl=S.timeline(o,'shots',0); assert.strictEqual(tl.hasClock,true);
 assert.strictEqual(tl.buckets[0].N,3); assert.strictEqual(tl.buckets[0].E,2);        // 18 s, 66 s, 200 s -> tranche 0-15 ; Eux 310 s et 405 s aussi
