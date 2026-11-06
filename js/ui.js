@@ -407,6 +407,9 @@ FC.ui = (function () {
   function init() {
     FC.store.load();
     const m = FC.store.meta(); FC.clock.set(m.elapsed || 0);
+    // La page a été rechargée pendant que le chrono tournait : on reprend en ajoutant le temps écoulé (si moins de 3 h).
+    const gap = m.wallAt ? Date.now() - m.wallAt : -1;
+    if (m.running && gap >= 0 && gap < 3 * 3600000) { FC.clock.set((m.elapsed || 0) + gap); FC.clock.start(); }
     initButtons(); legend();
     FC.input.init($('live'), function () { renderLive(); });
     FC.store.onChange(function () { renderSide(); renderLive(); renderAnalysis(); renderBilan(); fillMatchCard(false); });

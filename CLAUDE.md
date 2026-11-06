@@ -13,3 +13,8 @@ Outil de codage de match en direct pour un entraîneur de football (Chambéry Sa
 - Pas de `confirm()` / `alert()` : utiliser les boutons à confirmation en 2 clics.
 - Coordonnées en mètres dans un repère où Nous attaque toujours vers la droite (105 x 68).
 - Règles de saisie et de calcul : voir README.md et le récap du projet Claude « Application de code pour match de football ».
+
+## Outils et tests (dans ce dépôt)
+- `tools/build_app.py` : fabrique l'application (icônes, manifest, sw.js, zip) à partir de `/home/claude/codage-live`.
+- `tests/` : voir `tests/README.md`. Tous doivent passer avant un push.
+- Une nouvelle conversation part de ce dépôt : le cloner, le copier dans `/home/claude/codage-live`, lancer les tests.

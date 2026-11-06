@@ -8,7 +8,7 @@ FC.store = (function () {
   let cur = null;
   const subs = [], libSubs = [], saveSubs = [], delSubs = [], switchSubs = [], storageSubs = [];
 
-  function today() { return new Date().toISOString().slice(0, 10); }
+  function today() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }  // date locale (pas UTC)
   function uid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function blank() {
     return { id: uid(), info: { adv: '', date: today(), sn: null, se: null }, events: [], seq: 0,
@@ -17,6 +17,12 @@ FC.store = (function () {
   function norm(m) {                                    // tolère d'anciennes sauvegardes
     m.info = Object.assign({ adv: '', date: today(), sn: null, se: null }, m.info || {});
     m.events = m.events || []; m.seq = m.seq || 0;
+    // Types d'événement inconnus (ex. ancien « dribble ») : mis de côté dans m.legacy, gardés dans les sauvegardes, ignorés par les calculs.
+    const known = function (e) { return e && FC.CONFIG.kinds[e.kind]; };
+    if (m.events.some(function (e) { return !known(e); })) {
+      m.legacy = (m.legacy || []).concat(m.events.filter(function (e) { return !known(e); }));
+      m.events = m.events.filter(known);
+    }
     m.meta = Object.assign({ half: 1, elapsed: 0, flip: false }, m.meta || {});
     m.upd = m.upd || Date.now();
     return m;
@@ -38,6 +44,8 @@ FC.store = (function () {
   function touch(m) { m.upd = Date.now(); saveLocal(m); saveSubs.forEach(function (f) { f(m); }); }
   function emit() { subs.forEach(function (f) { f(); }); libSubs.forEach(function (f) { f(); }); }
   function m() { return matches[cur]; }
+  // État du chrono enregistré avec le match : permet de reprendre au bon temps après un rechargement de la page.
+  function stampClock(mt) { mt.meta.running = FC.clock.isRunning(); mt.meta.wallAt = Date.now(); }
 
   // Résultat vu de Nous : score saisi, sinon buts codés (déduit).
   function goals(mt) {
@@ -55,6 +63,8 @@ FC.store = (function () {
   }
 
   function select(id) {
+    const old = m();                                      // on quitte un match : son chrono est figé
+    if (old && old.meta.running) { old.meta.elapsed = FC.clock.now(); old.meta.running = false; old.meta.wallAt = Date.now(); saveLocal(old); }
     cur = id; saveIndex();
     switchSubs.forEach(function (f) { f(m()); });
     emit();
@@ -100,16 +110,16 @@ FC.store = (function () {
       const mt = m();
       ev.id = ++mt.seq; ev.half = mt.meta.half;
       if (ev.t == null) ev.t = FC.clock.now();
-      mt.meta.elapsed = FC.clock.now();
+      mt.meta.elapsed = FC.clock.now(); stampClock(mt);
       mt.events.push(ev); touch(mt); if (FC.backup) FC.backup.tick(mt); emit(); return ev;
     },
     patchLast: function (fn) { const mt = m(), e = mt.events[mt.events.length - 1]; if (e) { fn(e); touch(mt); emit(); } return e; },
     undo: function () { const mt = m(), e = mt.events.pop(); touch(mt); emit(); return e; },
-    setMeta: function (patch) { const mt = m(); Object.assign(mt.meta, patch); touch(mt); emit(); },
+    setMeta: function (patch) { const mt = m(); Object.assign(mt.meta, patch); if ('elapsed' in patch) stampClock(mt); touch(mt); emit(); },
     setInfo: function (patch) { const mt = m(); Object.assign(mt.info, patch); touch(mt); libSubs.forEach(function (f) { f(); }); },
     clear: function () {                                // vide le match courant (tests)
       const mt = m(); if (FC.backup && mt.events.length) FC.backup.snap(mt, 'avant remise à zéro');
-      mt.events = []; mt.seq = 0; mt.meta = { half: 1, elapsed: 0, flip: false }; touch(mt); emit();
+      mt.events = []; mt.seq = 0; mt.meta = { half: 1, elapsed: 0, flip: false, running: false }; touch(mt); emit();
     },
 
     // --- bibliothèque ---
