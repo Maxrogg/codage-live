@@ -24,6 +24,7 @@ FC.ui = (function () {
       ['· conduites', function (s) { return frac(s.deseq.conduite.ok, s.deseq.conduite.n); }, 1],
       ['Récupérations', function (s) { return s.recup.n + ' <span class="sub">(hautes ' + s.recup.haute + ')</span>'; }],
       ['· dont sur passe ratée adv.', function (s) { return s.recup.surRate; }, 1],
+      ['Duels gagnés (Z / E)', function (s) { return s.duels.n ? s.duels.won + ' / ' + s.duels.n + ' (' + s.duels.pct + '%)' : '–'; }],
       ['Pertes', function (s) { return s.perte.n + ' <span class="sub">(dans son tiers ' + s.perte.ownThird + ')</span>'; }],
       ['· dont sur passe ratée', function (s) { return s.perte.surRate; }, 1],
       ['Entrées dernier tiers', function (s) { return s.entrees.tiers; }, 1],
@@ -117,25 +118,25 @@ FC.ui = (function () {
   // ---------- vue analyse ----------
   // Chaque préréglage = une liste de couches ; chaque couche est dessinée pour Nous puis pour Eux.
   const PRESETS = {
-    all:   { label: 'Vue d\'ensemble', cols: 4, layers: ['deseq', 'diff', 'recup', 'perte', 'jeu', 'shots'] },
+    all:   { label: 'Vue d\'ensemble', cols: 4, layers: ['deseq', 'diff', 'pertePasse', 'duel', 'jeu', 'shots'] },
     deseq: { label: 'Déséquilibres', cols: 2, layers: ['deseq'] },
     diff:  { label: 'Sûr / à risque', cols: 2, layers: ['diff'] },
-    rp:    { label: 'Récup & pertes', cols: 2, layers: ['recup', 'perte'] },
+    rp:    { label: 'Pertes & duels', cols: 3, dense: false, layers: ['pertePasse', 'duel'] },
     jeu:   { label: 'Où ça passe', cols: 2, layers: ['jeu', 'arr'] },
     shots: { label: 'Frappes', cols: 2, layers: ['shots'] }
   };
-  const LAYER_PRESET = { deseq: 'deseq', diff: 'diff', recup: 'rp', perte: 'rp', jeu: 'jeu', arr: 'jeu', shots: 'shots' };
+  const LAYER_PRESET = { deseq: 'deseq', diff: 'diff', pertePasse: 'rp', duel: 'rp', jeu: 'jeu', arr: 'jeu', shots: 'shots' };
   let preset = 'all', builtFor = null, panels = [];
 
   function buildPanels() {
     const grid = $('an-grid'), pr = PRESETS[preset];
     grid.innerHTML = ''; panels = [];
-    grid.style.setProperty('--cols', pr.cols); grid.classList.toggle('dense', pr.cols > 2);
+    grid.style.setProperty('--cols', pr.cols); grid.classList.toggle('dense', pr.dense !== undefined ? pr.dense : pr.cols > 2);
     pr.layers.forEach(function (layer) {
-      ['N', 'E'].forEach(function (team) {
+      (layer === 'duel' ? ['N'] : ['N', 'E']).forEach(function (team) {
         const sec = el('section', 'card pan'), h2 = el('h2'), cv = el('canvas');
         sec.appendChild(h2); sec.appendChild(cv); grid.appendChild(sec);
-        if (pr.cols > 2) { sec.classList.add('click'); sec.onclick = function () { setPreset(LAYER_PRESET[layer]); }; }
+        if (preset === 'all') { sec.classList.add('click'); sec.onclick = function () { setPreset(LAYER_PRESET[layer]); }; }
         panels.push({ team: team, layer: layer, h2: h2, cv: cv });
       });
     });
@@ -154,11 +155,12 @@ FC.ui = (function () {
     $('f-result').disabled = !layers.some(function (l) { return l === 'jeu' || l === 'arr' || l === 'deseq'; });
     panels.forEach(function (p) {
       const info = FC.viz.drawAnalysis(p.cv, p.team, ev, half, p.layer, result);
-      p.h2.textContent = C.teams[p.team].label + ' — ' + FC.viz.LAYERS[p.layer] + ' ' + info;
+      p.h2.textContent = FC.viz.layerTitle(p.layer, p.team) + ' ' + info;
     });
     ['N', 'E'].forEach(function (t) { zoneBlock($(t === 'N' ? 'zones-n' : 'zones-e'), t, half, result); });
     statsTable($('an-stats'), half);
     $('diff-key').hidden = layers.indexOf('diff') < 0;
+    $('duel-key').hidden = layers.indexOf('duel') < 0;
   }
 
   // ---------- carte « Match » ----------
@@ -345,6 +347,7 @@ FC.ui = (function () {
     };
     $('btn-dl-csv').onclick = function () { save(FC.store.csvName(), FC.store.toCSV(), 'CSV'); };
     $('btn-dl-all').onclick = function () { save('sauvegarde_matchs.json', FC.store.allJSON(), 'Sauvegarde'); };
+    $('btn-save-top').onclick = function () { $('btn-dl-all').onclick(); };
     $('btn-bilan-copy').onclick = function () { copy(bilanText(), 'Bilan'); };
     $('btn-clock').onclick = function () { FC.clock.toggle(); FC.store.setMeta({ elapsed: FC.clock.now() }); tick(); };
     $('btn-half').onclick = function () {

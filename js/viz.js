@@ -168,13 +168,23 @@ FC.viz = (function () {
   const LAYERS = {
     jeu: 'Où ça part (départs de passes)',
     arr: 'Où ça arrive (arrivées de passes)',
+    pertePasse: 'Pertes sur passes ratées',
+    duel: 'Duels gagnés / perdus',
     perte: 'Pertes de balle',
     recup: 'Récupérations de balle',
     diff: 'Zones sûres / à risque',
     deseq: 'Déséquilibres',
     shots: 'Frappes'
   };
+  // Titre d'une carte (Eux : ses pertes sur passes = nos récupérations sur leurs erreurs).
+  function layerTitle(layer, team) {
+    if (layer === 'duel') return LAYERS.duel;
+    return (team === 'N' ? 'Nous' : 'Eux') + ' — ' + LAYERS[layer] + (layer === 'pertePasse' && team === 'E' ? ' (= nos récups)' : '');
+  }
   function layerEvents(events, team, half, layer, result) {
+    if (layer === 'pertePasse') {
+      return S_.select(S_.withDerived(events), team, half).filter(function (e) { return e.kind === 'perte' && e.derived === 'pass'; });
+    }
     if (layer === 'perte' || layer === 'recup') {
       return S_.select(S_.withDerived(events), team, half).filter(function (e) { return e.kind === layer; });
     }
@@ -193,17 +203,38 @@ FC.viz = (function () {
       if (play.length < 8 || lose.length < 3) {
         P_.lines(ctx, g, P.line);
         ctx.fillStyle = P.ink2; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('Pas assez de données (il faut au moins 8 passes et 3 pertes)', g.cw / 2, g.ch / 2);
+        ctx.fillText('Pas assez de données', g.cw / 2, g.ch / 2 - 8, g.cw - 20);
+        ctx.fillText('(au moins 8 passes et 3 pertes)', g.cw / 2, g.ch / 2 + 10, g.cw - 20);
         return info;
       }
       diverging(ctx, g, play.map(function (e) { return { x: e.x, y: e.y }; }), lose.map(function (e) { return { x: e.x, y: e.y }; }), P.N, P.R, P.line);
       P_.lines(ctx, g, P.line);
       return info;
     }
+    if (layer === 'duel') {
+      const d = S_.duels(events, half), n = d.won.length + d.lost.length;
+      const info = '(' + n + ' duels' + (n ? ' · ' + Math.round(100 * d.won.length / n) + ' % gagnés' : '') + ')';
+      if (n < 6 || !d.won.length || !d.lost.length) {
+        P_.lines(ctx, g, P.line);
+        ctx.fillStyle = P.ink2; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Pas assez de duels codés', g.cw / 2, g.ch / 2 - 8, g.cw - 20);
+        ctx.fillText('(au moins 6, dont des Z et des E)', g.cw / 2, g.ch / 2 + 10, g.cw - 20);
+        return info;
+      }
+      const xy = function (e) { return { x: e.x, y: e.y }; };
+      diverging(ctx, g, d.won.map(xy), d.lost.map(xy), P.N, P.R, P.line);
+      P_.lines(ctx, g, P.line);
+      d.won.concat(d.lost).forEach(function (e) {           // chaque duel = un petit point (bleu gagné, rouge perdu)
+        const p = P_.toScreen(g, e.x, e.y, false), win = e.kind === 'recup';
+        ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, Math.PI * 2); ctx.fillStyle = P.surface; ctx.fill();
+        ctx.beginPath(); ctx.arc(p[0], p[1], 3.2, 0, Math.PI * 2); ctx.fillStyle = win ? P.N : P.R; ctx.fill();
+      });
+      return info;
+    }
     const list = layerEvents(events, team, half, layer, result);
-    const isHeat = layer === 'jeu' || layer === 'arr' || layer === 'perte' || layer === 'recup';
+    const isHeat = layer === 'jeu' || layer === 'arr' || layer === 'perte' || layer === 'recup' || layer === 'pertePasse';
     if (isHeat) {
-      const hex = layer === 'perte' ? perteColor(P, team) : P[team];
+      const hex = layer === 'perte' || layer === 'pertePasse' ? perteColor(P, team) : P[team];
       heat(ctx, g, list.map(function (e) { return layer === 'arr' ? { x: e.x2, y: e.y2 } : { x: e.x, y: e.y }; }), hex);
     }
     P_.lines(ctx, g, P.line);
@@ -234,5 +265,5 @@ FC.viz = (function () {
     }
   }
 
-  return { fit: fit, drawAnalysis: drawAnalysis, drawLive: drawLive, layerEvents: layerEvents, LAYERS: LAYERS, pal: pal, perteColor: perteColor, hexToRgb: hexToRgb };
+  return { fit: fit, drawAnalysis: drawAnalysis, drawLive: drawLive, layerEvents: layerEvents, layerTitle: layerTitle, LAYERS: LAYERS, pal: pal, perteColor: perteColor, hexToRgb: hexToRgb };
 })();

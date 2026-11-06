@@ -20,6 +20,7 @@
   </nav>
   <span id="count" class="sub"></span>
   <span id="save-state" class="sub save"></span>
+  <button id="btn-save-top" class="ghost" title="Télécharge toutes les parties dans un fichier de sauvegarde (JSON)">Sauvegarder ⬇</button>
   <span id="flash" class="flash"></span>
 </header>
 
@@ -86,6 +87,7 @@
   </div>
   <p class="sub keyline">Nous attaquons toujours vers la droite. Pointillé = raté. Croix rouge = perte de Nous (= récup d'Eux), croix bleue = perte d'Eux (= récup de Nous). Clique une petite carte pour l'agrandir.</p>
   <p id="diff-key" class="sub keyline" hidden>Carte sûr / à risque — <b>couleur</b> : <b class="n">bleu</b> = zone plus sûre que la moyenne · gris = dans la moyenne · <b style="color:var(--perte)">rouge</b> = plus de pertes que la moyenne. <b>Intensité</b> = volume : une zone à 2 passes reste invisible, une zone à 70 passes ressort fort.</p>
+  <p id="duel-key" class="sub keyline" hidden>Pertes sur passes ratées = ballons perdus sur une passe ou une conduite ratée (Eux : nos récupérations sur leurs erreurs). Duels = ce que tu codes avec <kbd>Z</kbd> (gagné) et <kbd>E</kbd> (perdu). Carte des duels — <b class="n">bleu / froid</b> = on y gagne plus de duels que d'habitude · gris = dans la moyenne · <b style="color:var(--perte)">rouge / chaud</b> = on y en perd plus. Petits points = chaque duel. Intensité = nombre de duels.</p>
   <div id="an-grid" class="maps"></div>
   <details id="an-det" class="card"><summary>Tableaux par zones (4 zones × 5 couloirs)</summary>
     <div class="maps two">

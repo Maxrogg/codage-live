@@ -78,6 +78,14 @@ FC.stats = (function () {
     return out;
   }
 
+  // Duels = récupérations / pertes codées à la main (Z / E), à ne pas confondre avec celles déduites d'une passe ratée.
+  // Gagné = récup de Nous (Z), perdu = perte de Nous (E).
+  function duels(events, half) {
+    const ev = events.filter(function (e) { return !half || e.half === half; });
+    return { won: ev.filter(function (e) { return e.kind === 'recup' && e.team === 'N'; }),
+             lost: ev.filter(function (e) { return e.kind === 'perte' && e.team === 'N'; }) };
+  }
+
   // Courbe par tranches de 15 min (nécessite le chrono).
   function timeline(events, metric, half) {
     const b = C.timeBuckets.map(function () { return { N: 0, E: 0 }; });
@@ -116,7 +124,12 @@ FC.stats = (function () {
       perte: { n: per.length, ownThird: pt[0], milieu: pt[1], att: pt[2], surRate: per.filter(function (e) { return e.derived === 'pass'; }).length },
       shots: { n: sh.length, cadre: cad, but: but, hors: sh.length - cad - but, pctCadre: pct(cad + but, sh.length),
         surface: sh.filter(function (e) { return inBox(team, e.x, e.y); }).length, eff: pct(but, sh.length) },
-      entrees: entries(events, team, half)
+      entrees: entries(events, team, half),
+      // duels vus de l'équipe : récup ou perte qui ne vient pas d'une passe ratée (codée Z / E, ou son reflet)
+      duels: (function () {
+        const w = rec.filter(function (e) { return e.derived !== 'pass'; }).length, l = per.filter(function (e) { return e.derived !== 'pass'; }).length;
+        return { won: w, lost: l, n: w + l, pct: pct(w, w + l) };
+      })()
     };
   }
 
@@ -227,6 +240,8 @@ FC.stats = (function () {
       if (a.passes.n >= 5 && b.passes.n >= 5) duel.push({ tone: 'info', text: 'Réussite des passes : Nous ' + a.passes.pct + '% – ' + b.passes.pct + '% Eux.' });
       duel.push({ tone: 'info', text: 'Frappes : Nous ' + a.shots.n + ' (' + (a.shots.cadre + a.shots.but) + ' cadrées) – ' + b.shots.n + ' (' + (b.shots.cadre + b.shots.but) + ' cadrées) Eux.' });
     }
+    if (a.duels.n >= 4) duel.push({ tone: a.duels.pct > 50 ? 'good' : a.duels.pct < 50 ? 'warn' : 'info',
+      text: 'Duels (Z / E) : Nous ' + a.duels.won + ' gagnés sur ' + a.duels.n + ' (' + a.duels.pct + '%).' });
     return { n: n, nous: teamInsights(events, 'N', half), eux: teamInsights(events, 'E', half), duel: duel };
   }
 
@@ -241,5 +256,5 @@ FC.stats = (function () {
     };
   }
 
-  return { entries: entries, shotOrigins: shotOrigins, timeline: timeline, kpis: kpis, inBox: inBox, rel: rel, zone: zone, withDerived: withDerived, perteMatrix: perteMatrix, ratioMatrix: ratioMatrix, bilan: bilan, isPass: isPass, byResult: byResult, select: select, summary: summary, zoneMatrix: zoneMatrix, DESEQ: DESEQ };
+  return { duels: duels, entries: entries, shotOrigins: shotOrigins, timeline: timeline, kpis: kpis, inBox: inBox, rel: rel, zone: zone, withDerived: withDerived, perteMatrix: perteMatrix, ratioMatrix: ratioMatrix, bilan: bilan, isPass: isPass, byResult: byResult, select: select, summary: summary, zoneMatrix: zoneMatrix, DESEQ: DESEQ };
 })();

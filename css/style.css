@@ -43,6 +43,8 @@ header nav button.tab { background: transparent; border: 0; border-bottom: 3px s
 header nav button.tab:hover:not(:disabled) { color: var(--chalk); border-color: transparent; border-bottom-color: rgba(242, 246, 238, .35); }
 header nav button.tab.on { color: var(--chalk); border-bottom-color: var(--chalk); background: transparent; }
 header .sub { color: var(--chalk2); }
+header button.ghost { background: rgba(242, 246, 238, .1); border-color: rgba(242, 246, 238, .25); color: var(--chalk); padding: 5px 11px; }
+header button.ghost:hover:not(:disabled) { background: rgba(242, 246, 238, .22); border-color: rgba(242, 246, 238, .5); }
 header #count { margin-left: auto; font-variant-numeric: tabular-nums; }
 .flash { opacity: 0; transition: opacity .2s; font-size: 12px; color: var(--chalk); background: rgba(242, 246, 238, .14); padding: 3px 10px; border-radius: 99px; }
 .flash:empty { display: none; }
