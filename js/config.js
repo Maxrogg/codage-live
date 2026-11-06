@@ -40,6 +40,6 @@ FC.CONFIG = {
   timeBuckets: ['0–15', '15–30', '30–45', '45–60', '60–75', '75–90', '90+'],
   // Momentum = pression offensive de Nous moins celle d'Eux, sur une fenêtre glissante (minutes).
   // Chaque action vaut des points ; une entrée dans la surface remplace l'entrée dans le dernier tiers (pas de double compte).
-  momentum: { win: 5, neutral: 1, entSurf: 3, entTiers: 1, shot: 2, shotOn: 1, goal: 2, deseq: 1.5, recupHaute: 1.5 },
+  momentum: { win: 5, neutral: 1, entSurf: 3, entTiers: 1, shot: 2, shotOn: 1, goal: 2, deseq: 3, recupHaute: 1.5 },
   recentShown: 16                          // nb d'événements gardés visibles en direct
 };
