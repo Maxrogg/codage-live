@@ -1,53 +1,87 @@
 # Analyse automatique des vidéos Veo
 
-Ce programme lit le **radar 2D de Veo** (la mini-carte en haut à droite du lecteur Veo Analytics) dans une
-vidéo enregistrée depuis l'écran. Veo a déjà calculé la position des joueurs : on la récupère, puis on en tire :
+Le programme lit le **radar 2D de Veo** (la mini-carte en haut à droite du lecteur Veo Analytics) sur une vidéo
+enregistrée depuis l'écran. Veo y affiche déjà la position des joueurs et du ballon.
 
-- le **bloc des deux équipes** : hauteur, ligne défensive, largeur, longueur, surface occupée ;
-- la **possession** et les **zones du ballon** (notre tiers, milieu, tiers adverse) ;
-- des **actions** (récupérations, passes) importables dans l'appli de codage, avec leur seconde dans la vidéo.
+Il en tire **les mêmes actions que ton codage à la main** :
+- passes réussies et ratées ;
+- passes de déséquilibre ;
+- conduites de déséquilibre ;
+- duels gagnés (Z) et perdus (E) ;
+- frappes.
 
-Pas besoin de carte graphique : un PC normal suffit (environ 5 s pour 30 s de vidéo).
+Le fichier produit s'importe dans l'appli : Analyse, Bilan et Vidéo fonctionnent comme pour un match codé.
+C'est un **pré-codage à vérifier** dans l'onglet Vidéo, pas une vérité.
+
+Pas besoin de carte graphique : environ 5 s de calcul pour 30 s de vidéo.
 
 ## Installation (une seule fois, Windows)
 
-1. Installer Python 3 depuis python.org (cocher « Add Python to PATH »).
-2. Dans le dossier `ia`, ouvrir un terminal et taper :
-   `pip install opencv-python numpy matplotlib`
+1. Installer Python 3 depuis python.org, en cochant « Add Python to PATH ».
+2. Double-cliquer sur `installer.bat`.
 
 ## Enregistrer la vidéo
 
-1. Ouvrir le match sur app.veo.co, afficher le **radar 2D** (en haut à droite).
-2. Lancer l'enregistrement de l'écran : `Windows + Alt + R` (Xbox Game Bar) ou OBS.
-3. Lancer la lecture. Garder la fenêtre en plein écran, sans la redimensionner pendant l'enregistrement.
+1. Sur app.veo.co, ouvrir le match et afficher le **radar 2D**.
+2. Lancer l'enregistrement de l'écran : `Windows + Alt + R` (Xbox Game Bar), ou OBS.
+3. Garder la même taille de fenêtre pendant tout l'enregistrement. L'idéal : une mi-temps entière.
 
-## Lancer l'analyse
+## Analyser
 
-    python analyser.py "C:\Users\...\match.mp4" --nous noir
+**Glisser la vidéo sur `analyser.bat`.** Trois questions s'affichent :
 
-- `--nous noir` : Nous = les **ronds noirs** du radar ; `--nous rouge` : les triangles rouges.
-  (Ce sont les marques de Veo, pas la couleur des maillots. Regarder le radar pour savoir lesquelles sont Nous.)
-- `--sens droite` ou `--sens gauche` : sens d'attaque de Nous sur le radar, si le sens automatique se trompe.
-- `--k1 12.5` : seconde de la vidéo où le chrono de l'appli vaut 00:00 (pour que les actions tombent au bon moment).
-- `--mi-temps 2` : si la vidéo est la 2e mi-temps.
+1. **Nous = noir ou rouge.** Ce sont les marques du radar (ronds noirs ou triangles rouges), pas la couleur des maillots.
+2. **La mi-temps.**
+3. **Le sens d'attaque**, vu depuis la caméra. Une proposition est faite ; appuyer sur Entrée pour l'accepter.
 
-Résultats dans le dossier `resultats_<nom de la vidéo>` :
+Le dossier `resultats_<nom de la vidéo>` s'ouvre à la fin. Il contient :
 
 | Fichier | Contenu |
 |---|---|
-| `rapport.png` | image de synthèse (présence des joueurs, trajet du ballon, possession, chiffres) |
-| `resume.json` | les chiffres |
 | `match_ia.json` | à importer dans l'appli : Codage > Données et sauvegardes > Importer une sauvegarde |
-| `positions.json` | positions image par image (pour aller plus loin) |
+| `rapport.png` | les actions détectées sur le terrain + les comptes |
+| `resume.json` | les comptes |
+| `positions.json` | positions image par image (vérifications) |
+
+Pour que les actions tombent au bon moment du chrono : `--k1 <seconde de la vidéo où le chrono vaut 00:00>`.
+
+## Comparer l'IA à ton codage
+
+1. Coder le match en live comme d'habitude.
+2. Dans l'onglet Vidéo de l'appli : ouvrir la même vidéo, caler les mi-temps, puis « Exporter actions + vidéo (JSON) ».
+3. Sélectionner ce fichier et `match_ia.json`, puis les glisser ensemble sur `comparer.bat`.
+
+Pour chaque type d'action, le résultat donne :
+- combien tu en as codé ;
+- combien l'IA en a trouvé ;
+- combien se correspondent (même action à ±4 s).
+
+Le fichier `comparaison.csv` liste chaque action manquée ou en trop, avec sa seconde dans la vidéo, pour aller vérifier.
+
+## Comment l'IA décide
+
+| Action | Règle |
+|---|---|
+| Porteur | joueur le plus proche du ballon (moins de 4 m), confirmé sur 2 images |
+| Passe | le ballon va d'un joueur à un coéquipier qui attendait près du point d'arrivée |
+| Conduite | le même joueur avance avec le ballon d'au moins 10 m |
+| Déséquilibre | adversaires éliminés : entre le ballon et leur but avant, derrière après. Passe : 3 ou plus. Conduite : 2 ou plus. |
+| Passe ratée | le ballon voyage puis un adversaire l'a |
+| Duel | ballon disputé (les deux équipes au contact), puis une équipe repart avec |
+| Frappe | ballon qui part vite vers le but adverse, à moins de 35 m |
+
+Les frappes sont toujours notées « non cadrées » : le radar ne montre pas le cadre, il faut corriger.
+
+Tous les réglages sont en tête de la section « détection des actions » de `jeu.py` (`CFG`).
 
 ## Limites connues
 
-- Les positions sont celles de Veo : quelques marques manquent ou se superposent quand les joueurs sont proches.
-- Le gardien est affiché dans la couleur de son maillot : il peut apparaître dans la couleur de l'autre équipe
-  (le programme le corrige quand il est seul dans sa surface).
-- La croix jaune est prise pour le ballon. Les passes et récupérations sont déduites de « qui est le plus proche
-  du ballon » : c'est un pré-codage à vérifier dans l'onglet Vidéo de l'appli, pas une vérité.
-- Le radar n'existe que sur les matchs traités par Veo Analytics (pas en direct).
+- Les positions sont celles de Veo : des marques manquent ou se superposent quand les joueurs sont proches.
+- Le gardien est affiché dans la couleur de son maillot, souvent celle de l'autre équipe. Le programme le corrige
+  quand il est seul dans sa surface.
+- Le sens d'attaque proposé est fiable sur une mi-temps, moins sur un court extrait : il faut le vérifier.
+- Les coups de pied arrêtés ne sont pas encore détectés.
+- Le radar n'existe que sur les matchs traités par Veo Analytics, donc pas en direct.
 
 ## Tests
 
