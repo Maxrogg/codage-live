@@ -82,7 +82,7 @@ input:hover { border-color: var(--ink2); }
 
 /* ----- vue Codage ----- */
 #view-live { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
-#view-live[hidden], #view-analysis[hidden], #view-matches[hidden], #view-bilan[hidden] { display: none; }
+#view-live[hidden], #view-analysis[hidden], #view-matches[hidden], #view-bilan[hidden], #view-video[hidden] { display: none; }
 .stage canvas, .maps canvas { width: 100%; display: block; border-radius: 8px; background: var(--pitch); cursor: crosshair; }
 .stage canvas { margin: 8px; width: calc(100% - 16px); box-shadow: 0 0 0 8px var(--turf), 0 16px 30px -14px rgba(0, 0, 0, .55); border-radius: 7px; }
 .maps canvas { cursor: default; }
@@ -218,3 +218,20 @@ details.howto[open] > summary { color: var(--ink); border-color: var(--ink2); }
 details.howto > p { margin: 10px 0 0; padding: 0 2px; }
 .maps .pan h2 { font-size: 14px; }
 #an-stats .facts { max-width: 760px; margin: 0 auto; }
+
+/* ----- onglet Vidéo ----- */
+.vd-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+.vd-side { display: grid; gap: 16px; }
+.vd-top { margin-top: 0; margin-bottom: 10px; align-items: center; }
+#vd { width: 100%; max-height: 72vh; background: #000; border-radius: 10px; display: block; }
+.vd-k { margin-top: 10px; }
+.vd-k .row { margin-top: 6px; }
+.vd-f { display: grid; gap: 8px; margin-bottom: 8px; }
+#vd-pitch { width: 100%; aspect-ratio: 105 / 68; display: block; border-radius: 8px; margin-bottom: 8px; }
+.vd-list { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow: auto; border-top: 1px solid var(--rule); }
+.vd-list li { padding: 6px 8px; border-bottom: 1px solid var(--rule); cursor: pointer; font-size: 13px; }
+.vd-list li:hover { background: var(--surface2); }
+.vd-list li.sel { background: var(--surface2); box-shadow: inset 3px 0 0 var(--yellow, #f5c400); }
+.vd-list li.nosync .vt { opacity: .45; }
+.vd-list .vt { display: inline-block; min-width: 52px; font: 600 12px ui-monospace, Consolas, monospace; color: var(--ink2); }
+@media (max-width: 1000px) { .vd-wrap { grid-template-columns: 1fr; } }

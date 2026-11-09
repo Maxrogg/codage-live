@@ -181,11 +181,11 @@ FC.store = (function () {
       return 'match_' + (i.date || '') + '_' + ((i.adv || 'adversaire').replace(/[^\w-]+/g, '_')) + '.csv';
     },
     toCSV: function () {
-      const head = 'id,mi_temps,minute,equipe,type,ok,x,y,x2,y2,resultat_frappe';
+      const head = 'id,mi_temps,minute,equipe,type,ok,x,y,x2,y2,resultat_frappe,video_s';
       const r = function (v) { return v == null ? '' : (typeof v === 'number' ? Math.round(v * 10) / 10 : v); };
       const rows = m().events.map(function (e) {
         return [e.id, e.half, FC.clock.fmt(e.t), e.team, e.kind, e.ok == null ? '' : (e.ok ? 1 : 0),
-          r(e.x), r(e.y), r(e.x2), r(e.y2), e.res || ''].join(',');
+          r(e.x), r(e.y), r(e.x2), r(e.y2), e.res || '', FC.video ? r(FC.video.vt(e)) : ''].join(',');
       });
       return [head].concat(rows).join('\n');
     }

@@ -8,6 +8,9 @@ Scripts Node / Playwright. Ils lisent l'application dans `/home/claude/codage-li
 - `cpa.js` xG et CPA (sans navigateur) · `cpa2.js` touche F + Espace et carte CPA
 - `reload.js` rechargement en plein match (chrono), anciens types d'événement, date locale
 - `pwa.js` hors ligne : servir le dépôt sur le port 8765 (`python3 -m http.server 8765`) avant
+- `video.js` onglet Vidéo (calage, saut aux actions, export, CSV) : vidéo de test à fabriquer avec ffmpeg (commande en tête du fichier)
+- `ia_import.js` import dans l'appli du fichier produit par `ia/analyser.py`
+- `../ia/test_ia.py` analyse automatique (Python, sans navigateur) : `cd ia && python3 test_ia.py`
 - `shots*.js` captures d'écran clair / sombre · `perf.js` 900 événements
 
 Playwright : `/opt/node22/lib/node_modules/playwright`, Chrome : `/usr/bin/google-chrome` (adapter si besoin).

@@ -2,7 +2,7 @@
 FC.ui = (function () {
   const C = FC.CONFIG, $ = function (id) { return document.getElementById(id); };
   let view = 'live', armedDel = null, armedTimer = null, armedZero = null;
-  const VIEWS = ['live', 'analysis', 'bilan', 'matches'];
+  const VIEWS = ['live', 'analysis', 'bilan', 'video', 'matches'];
 
   function el(tag, cls, html) {
     const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n;
@@ -307,7 +307,7 @@ FC.ui = (function () {
     FC.input.setEnabled(v === 'live');
     refresh();
   }
-  function refresh() { renderSide(); renderLive(); renderAnalysis(); renderBilan(); renderMatches(); fillMatchCard(false); tick(); }
+  function refresh() { renderSide(); renderLive(); renderAnalysis(); renderBilan(); renderMatches(); FC.video.render(); fillMatchCard(false); tick(); }
 
   function copy(text, label) {
     try {
@@ -325,6 +325,7 @@ FC.ui = (function () {
     $('tab-live').onclick = function () { setView('live'); };
     $('tab-analysis').onclick = function () { setView('analysis'); };
     $('tab-bilan').onclick = function () { setView('bilan'); };
+    $('tab-video').onclick = function () { setView('video'); };
     $('tab-matches').onclick = function () { setView('matches'); };
     $('b-half').onchange = renderBilan; $('t-metric').onchange = renderBilan; $('mo-win').onchange = renderBilan;
     $('m-adv').oninput = function () { FC.store.setInfo({ adv: this.value }); };
@@ -428,7 +429,8 @@ FC.ui = (function () {
     if (m.running && gap >= 0 && gap < 3 * 3600000) { FC.clock.set((m.elapsed || 0) + gap); FC.clock.start(); }
     initButtons(); legend();
     FC.input.init($('live'), function () { renderLive(); });
-    FC.store.onChange(function () { renderSide(); renderLive(); renderAnalysis(); renderBilan(); fillMatchCard(false); });
+    FC.store.onChange(function () { renderSide(); renderLive(); renderAnalysis(); renderBilan(); FC.video.render(); fillMatchCard(false); });
+    FC.video.init({ describe: describe, flash: flash, save: save });
     FC.store.onLib(function () { renderMatches(); fillMatchCard(false); });
     FC.store.onSwitch(function (mt) {
       FC.input.cancel(); FC.clock.pause(); FC.clock.set(mt.meta.elapsed || 0); tick(); fillMatchCard(true);
@@ -440,7 +442,7 @@ FC.ui = (function () {
       $('save-note').textContent = st.s === 'local' ? 'Sauvegarde dans ce navigateur. Le cloud n\'est pas disponible ici : télécharge la sauvegarde complète de temps en temps.' : 'Sauvegarde automatique à chaque événement (navigateur + compte).';
       renderMatches();
     });
-    window.addEventListener('resize', function () { renderLive(); renderAnalysis(); });
+    window.addEventListener('resize', function () { renderLive(); renderAnalysis(); FC.video.render(); });
     if (window.ResizeObserver) new ResizeObserver(function () { renderLive(); renderAnalysis(); }).observe($('live'));
     setInterval(tick, 500);
     setView('live');

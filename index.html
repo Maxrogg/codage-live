@@ -16,6 +16,7 @@
     <button id="tab-live" class="tab on">Codage</button>
     <button id="tab-analysis" class="tab">Analyse</button>
     <button id="tab-bilan" class="tab">Bilan</button>
+    <button id="tab-video" class="tab">Vidéo</button>
     <button id="tab-matches" class="tab">Matchs</button>
   </nav>
   <span id="count" class="sub"></span>
@@ -133,6 +134,43 @@
   </div>
 </main>
 
+<main id="view-video" hidden>
+  <div class="vd-wrap">
+    <section class="card vd-main">
+      <div class="row vd-top">
+        <button id="vd-open" class="pri">Ouvrir la vidéo du match</button>
+        <input id="vd-input" type="file" accept="video/*" hidden>
+        <span id="vd-file" class="sub"></span>
+      </div>
+      <video id="vd" controls preload="metadata"></video>
+      <div class="row">
+        <button id="vd-prev" title="Action précédente (J)">◀ Précédente</button>
+        <button id="vd-next" title="Action suivante (K)">Suivante ▶</button>
+        <span class="sub"><kbd>J</kbd> / <kbd>K</kbd> action précédente / suivante · <kbd>L</kbd> lecture / pause. La vidéo démarre 4 s avant l'action.</span>
+      </div>
+    </section>
+    <aside class="vd-side">
+      <section class="card">
+        <h2>Caler la vidéo sur le codage</h2>
+        <p class="sub">Méthode simple : mets la vidéo sur le coup d'envoi, puis clique le bouton de la mi-temps. Méthode précise : choisis une action dans la liste, avance la vidéo au moment exact où elle se passe, puis « C'est ici ».</p>
+        <div class="vd-k"><b>1re mi-temps</b> <span id="vd-k1" class="sub"></span>
+          <div class="row"><button id="vd-ko1">Coup d'envoi 1re ici</button><button id="vd-m1" title="Décaler de −1 s">−1 s</button><button id="vd-p1" title="Décaler de +1 s">+1 s</button></div></div>
+        <div class="vd-k"><b>2e mi-temps</b> <span id="vd-k2" class="sub"></span>
+          <div class="row"><button id="vd-ko2">Coup d'envoi 2e ici</button><button id="vd-m2" title="Décaler de −1 s">−1 s</button><button id="vd-p2" title="Décaler de +1 s">+1 s</button></div></div>
+        <div class="row"><button id="vd-here" title="L'action choisie dans la liste se passe à l'instant affiché">C'est ici (action choisie)</button>
+          <button id="vd-export" title="Actions codées + seconde dans la vidéo, pour l'analyse automatique">Exporter actions + vidéo (JSON)</button></div>
+      </section>
+      <section class="card">
+        <div class="filters vd-f"><div id="vd-filters" class="chips"></div>
+          <div id="vd-team" class="chips"><button class="chip" data-k="N">Nous</button><button class="chip" data-k="E">Eux</button><button class="chip" data-k="all">Les deux</button></div>
+          <span id="vd-n" class="sub"></span></div>
+        <canvas id="vd-pitch"></canvas>
+        <ul id="vd-list" class="vd-list"></ul>
+      </section>
+    </aside>
+  </div>
+</main>
+
 <main id="view-matches" hidden>
   <section class="card">
     <h2>Matchs enregistrés</h2>
@@ -162,6 +200,7 @@
 <script src="js/chart.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/input.js"></script>
+<script src="js/video.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/pwa.js"></script>
 <script>FC.ui.init();</script>

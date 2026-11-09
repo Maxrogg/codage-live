@@ -6,7 +6,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKIP = ('sw.js', 'README.md', 'CLAUDE.md', '.nojekyll')
 files = []
 for base, dirs, names in os.walk(ROOT):
-    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('tools', 'tests', 'node_modules')]
+    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('tools', 'tests', 'node_modules', 'ia')]
     for n in names:
         p = os.path.relpath(os.path.join(base, n), ROOT).replace(os.sep, '/')
         if p not in SKIP and not n.startswith('.') and not p.endswith('.zip'): files.append(p)

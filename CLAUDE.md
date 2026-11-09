@@ -3,7 +3,8 @@
 Outil de codage de match en direct pour un entraîneur de football (Chambéry Savoie Football). L'utilisateur parle français et veut des réponses courtes. Interface et messages en français.
 
 ## Structure (aucune compilation, scripts simples sur l'espace de noms global `FC`)
-- `index.html`, `css/style.css`, `js/*.js` : config (touches, seuils), clock, events (matchs + stockage local), backup (points de sauvegarde), pitch, stats (calculs), viz (cartes), chart (courbe), input (clavier), sync (cloud Claude, sans effet hors Claude), ui (écrans), pwa.
+- `index.html`, `css/style.css`, `js/*.js` : config (touches, seuils), clock, events (matchs + stockage local), backup (points de sauvegarde), pitch, stats (calculs), viz (cartes), chart (courbe), input (clavier), video (onglet Vidéo : calage codage ↔ film, meta.video = {name, k1, k2}), sync (cloud Claude, sans effet hors Claude), ui (écrans), pwa.
+- `ia/` : analyse automatique en Python (lecture du radar 2D Veo → blocs, possession, actions au format de l'appli). Hors de l'application installée (exclu de sw.js). Voir `ia/README.md`.
 - `manifest.webmanifest`, `sw.js`, `icons/` : application installable hors ligne.
 
 ## Règles
