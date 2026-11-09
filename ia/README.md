@@ -62,11 +62,11 @@ Le fichier `comparaison.csv` liste chaque action manquée ou en trop, avec sa se
 
 | Action | Règle |
 |---|---|
-| Porteur | joueur le plus proche du ballon (moins de 4 m), confirmé sur 2 images |
-| Passe | le ballon va d'un joueur à un coéquipier qui attendait près du point d'arrivée |
-| Conduite | le même joueur avance avec le ballon d'au moins 10 m |
+| Point de départ | le ballon du radar est fiable, les joueurs à quelques mètres près : on suit le ballon |
+| Passe | le ballon part vite (8,5 m/s et plus) sur au moins 4 m dans une même direction ; même équipe avant et après = réussie |
+| Conduite | le ballon avance d’au moins 10 m au pied de la même équipe, sans passe |
 | Déséquilibre | adversaires éliminés : entre le ballon et leur but avant, derrière après. Passe : 3 ou plus. Conduite : 2 ou plus. |
-| Passe ratée | le ballon voyage puis un adversaire l'a |
+| Passe ratée | après la passe, c’est l’adversaire qui a le ballon, ou le ballon sort du terrain |
 | Duel | ballon disputé (les deux équipes au contact), puis une équipe repart avec |
 | Frappe | ballon qui part vite vers le but adverse, à moins de 35 m |
 

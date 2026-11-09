@@ -79,34 +79,22 @@ def fill_ball(frames, max_gap=2.0):
 
 
 # ---------------- détection des actions ----------------
+# Le ballon du radar Veo est lissé : ses déplacements sont propres, alors que les joueurs sont placés à quelques
+# mètres près. On part donc du BALLON : chaque « transfert » (ballon rapide sur au moins 5 m, dans une même
+# direction) est une passe (ou une frappe) ; l'équipe qui a le ballon avant / après dit si elle est réussie.
 CFG = dict(
-    radius=4.0,      # m : un joueur à moins de ça du ballon peut en être le porteur
-    contest=1.5,     # m : si les deux équipes sont à moins de ça d'écart de distance → ballon disputé (duel)
-    fly=11.0,        # m/s : ballon plus rapide = en l'air / en passe, personne ne le porte
-    hold=2,          # images de suite (à 5 i/s) pour confirmer un porteur
-    min_pass=5.0,    # m : le porteur a changé de place d'au moins ça → passe (même équipe)
-    max_pass_s=6.0,  # s : au-delà, on ne relie plus deux possessions par une passe
-    deseq=3,         # adversaires éliminés pour une passe de déséquilibre
-    deseq_carry=2,   # adversaires éliminés pour une conduite de déséquilibre
-    carry_min=10.0,  # m : conduite = le ballon avance d'au moins ça avec la même équipe, sans passe
-    shot_speed=12.0, # m/s : frappe = ballon rapide vers le but adverse...
-    shot_zone=35.0,  # m : ...partant à moins de ça du but
+    radius=4.0,       # m : un joueur à moins de ça du ballon peut en être le porteur
+    contest=1.5,      # m : les deux équipes à moins de ça d'écart de distance → ballon disputé
+    fast=8.5,         # m/s : au-dessus, le ballon voyage (passe, frappe) ; en dessous, il est au pied
+    turn=50,          # degrés : changement de direction qui coupe deux transferts
+    min_pass=4.0,     # m : déplacement minimal d'un transfert
+    look=1.5,         # s : on cherche le porteur jusqu'à ça avant / après le transfert
+    deseq=3,          # adversaires éliminés pour une passe de déséquilibre
+    deseq_carry=2,    # adversaires éliminés pour une conduite de déséquilibre
+    carry_min=10.0,   # m : conduite = le ballon avance d'au moins ça au pied de la même équipe
+    shot_zone=35.0,   # m : frappe = transfert vers le but adverse qui part à moins de ça du but
+    duel_s=3.0,       # s : changement d'équipe sans transfert, en moins de ça → duel
 )
-
-
-def ball_speed(frames):
-    """Vitesse du ballon (m/s) à chaque image, lissée (médiane sur 3 images). None si inconnue."""
-    v = [None] * len(frames)
-    for i in range(1, len(frames)):
-        a, b = frames[i - 1]['ballon'], frames[i]['ballon']
-        dt = frames[i]['t'] - frames[i - 1]['t']
-        if a and b and dt > 0:
-            v[i] = math.dist(a, b) / dt
-    out = []
-    for i in range(len(v)):
-        w = [x for x in v[max(0, i - 1):i + 2] if x is not None]
-        out.append(_median(w) if w else None)
-    return out
 
 
 def _nearest(pts, b):
@@ -118,58 +106,50 @@ def _nearest(pts, b):
     return best
 
 
-def states(frames, cfg=CFG):
-    """État du ballon à chaque image : 'N' / 'E' (porté), 'duel', 'vol' (en l'air / passe), 'libre', None (pas vu).
-    Renvoie aussi le porteur (position) quand il y en a un."""
-    sp = ball_speed(frames)
-    out = []
-    for f, v in zip(frames, sp):
-        b = f['ballon']
-        if not b:
-            out.append((None, None))
-            continue
-        n, e = _nearest(f['N'], b), _nearest(f['E'], b)
-        dn = n[0] if n else 99
-        de = e[0] if e else 99
-        if min(dn, de) < 0.8:                             # marque sous la croix : Veo met le ballon sur ce joueur
-            out.append(('N', n[1]) if dn < de else ('E', e[1]))
-            continue
-        if v is not None and v > cfg['fly']:
-            out.append(('vol', None))
-            continue
-        if min(dn, de) > cfg['radius']:
-            out.append(('libre', None))
-        elif dn <= cfg['radius'] and de <= cfg['radius'] and abs(dn - de) < cfg['contest']:
-            out.append(('duel', None))
-        else:
-            out.append(('N', n[1]) if dn < de else ('E', e[1]))
-    return out
+def holder(f, cfg=CFG):
+    """Équipe qui a le ballon sur cette image : 'N', 'E', 'duel' (disputé) ou None (personne à moins de radius)."""
+    b = f['ballon']
+    if not b:
+        return None
+    n, e = _nearest(f['N'], b), _nearest(f['E'], b)
+    dn = n[0] if n else 99
+    de = e[0] if e else 99
+    if min(dn, de) > cfg['radius']:
+        return None
+    if dn <= cfg['radius'] and de <= cfg['radius'] and abs(dn - de) < cfg['contest'] and min(dn, de) >= 0.8:
+        return 'duel'
+    return 'N' if dn < de else 'E'
 
 
-def segments(frames, st, cfg=CFG):
-    """Moments où une équipe porte le ballon (au moins `hold` images de suite).
-    Chaque segment : équipe, première / dernière image, porteur au début / à la fin, et ce qui s'est passé juste avant
-    (vol = ballon en l'air, duel = ballon disputé)."""
-    segs, i, n = [], 0, len(st)
-    while i < n:
-        team = st[i][0]
-        if team in ('N', 'E'):
-            j = i
-            while j + 1 < n and st[j + 1][0] == team:
-                j += 1
-            if j - i + 1 >= cfg['hold']:
-                segs.append(dict(team=team, i0=i, i1=j, p0=st[i][1], p1=st[j][1]))
-            i = j + 1
-        else:
-            i += 1
-    for a, b in zip(segs, segs[1:]):
-        between = [st[k][0] for k in range(a['i1'] + 1, b['i0'])]
-        b['avant'] = 'vol' if 'vol' in between else ('duel' if 'duel' in between else ('rien' if not between else 'autre'))
-    return segs
+def transfers(frames, cfg=CFG):
+    """Moments où le ballon voyage : liste de (i0, i1) = image de départ et d'arrivée."""
+    out, cur = [], None
+    H = [holder(f, cfg) for f in frames]
+    for i in range(1, len(frames)):
+        a, b = frames[i - 1]['ballon'], frames[i]['ballon']
+        dt = frames[i]['t'] - frames[i - 1]['t']
+        fast = bool(a and b and dt > 0 and math.dist(a, b) / dt >= cfg['fast'])
+        if fast:
+            head = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            if cur and (i - 1 == cur['i1'] or i - 2 == cur['i1']) and abs((head - cur['head'] + 180) % 360 - 180) <= cfg['turn']:
+                cur['i1'] = i
+            else:
+                if cur:
+                    out.append(cur)
+                cur = dict(i0=i - 1, i1=i, head=head)
+        elif cur and (i - cur['i1'] > 1 or H[i] in ('N', 'E')):
+            # une image lente est tolérée dans un transfert, sauf si un joueur a le ballon (il l'a touché)
+            out.append(cur)
+            cur = None
+    if cur:
+        out.append(cur)
+    return [(c['i0'], c['i1']) for c in out
+            if frames[c['i0']]['ballon'] and frames[c['i1']]['ballon']
+            and math.dist(frames[c['i0']]['ballon'], frames[c['i1']]['ballon']) >= cfg['min_pass']]
 
 
 def goal_side(f, team, bx):
-    """Adversaires de `team` placés entre le ballon et leur but (gardien compris s'il est dans sa surface : on l'enlève)."""
+    """Adversaires de `team` placés entre le ballon et leur but (sans leur gardien s'il est dans sa surface)."""
     if team == 'N':
         opp = [p for p in f['E'] if not (in_box(p, 'E') and p[0] > L - 6)]
         return sum(1 for p in opp if p[0] > bx)
@@ -187,13 +167,11 @@ def _fwd(team, a, b):
 
 
 def actions(frames, k1=0.0, half=1, cfg=CFG):
-    """Actions au format de l'appli, déduites des positions. Chaque action garde `elim` (adversaires éliminés) et
-    `video_s` (seconde de la vidéo) pour pouvoir la vérifier dans l'onglet Vidéo."""
-    st = states(frames, cfg)
-    segs = segments(frames, st, cfg)
-    sp = ball_speed(frames)
+    """Actions au format de l'appli. Chaque action garde `video_s` (seconde de la vidéo) pour la vérifier dans
+    l'onglet Vidéo, et `elim` (adversaires éliminés) pour les passes et conduites."""
     ev = []
     start = 0 if half == 1 else 45 * 60000
+    H = [holder(f, cfg) for f in frames]
 
     def mk(kind, team, i, **kw):
         t = frames[i]['t']
@@ -204,68 +182,73 @@ def actions(frames, k1=0.0, half=1, cfg=CFG):
     def ball(i):
         return frames[i]['ballon']
 
-    # Une possession (« run ») = segments de la même équipe dont le porteur ne change pas (ballon perdu de vue
-    # un instant, adversaire proche...). Une passe = changement de porteur entre deux runs de la même équipe.
-    def pass_like(r, sg):
-        """Passe si, au départ du ballon, un coéquipier attendait déjà près du point d'arrivée.
-        Sinon c'est le porteur qui a couru avec le ballon : conduite."""
-        ba, bb = ball(r['i1']), ball(sg['i0'])
-        d = math.dist(ba, bb)
-        if d < cfg['min_pass']:
-            return False
-        mates = [p for p in frames[r['i1']][r['team']] if math.dist(p, ba) > 2.0]
-        return any(math.dist(p, bb) <= max(5.0, 0.4 * d) for p in mates)
+    def who(i, step, lo, hi):
+        """Premier porteur net (N / E) en partant de l'image i dans le sens step, sans sortir de [lo, hi]
+        ni dépasser `look` secondes."""
+        t0, k = frames[i]['t'], i
+        while lo <= k <= hi and abs(frames[k]['t'] - t0) <= cfg['look']:
+            if H[k] in ('N', 'E'):
+                return H[k], k
+            k += step
+        return None, None
 
-    runs = []
-    for sg in segs:
-        r = runs[-1] if runs else None
-        if r and r['team'] == sg['team'] and frames[sg['i0']]['t'] - frames[r['i1']]['t'] <= cfg['max_pass_s'] \
-                and (math.dist(r['p1'], sg['p0']) < cfg['min_pass'] or not pass_like(r, sg)):
-            r.update(i1=sg['i1'], p1=sg['p1'])
-        else:
-            runs.append(dict(sg))
-
-    for r in runs:                                        # conduite : le ballon avance avec le même porteur
-        b0, b1 = ball(r['i0']), ball(r['i1'])
-        if _fwd(r['team'], b0, b1) >= cfg['carry_min']:
-            el = eliminated(frames, r['i0'], r['i1'], r['team'], b0, b1)
-            if el >= cfg['deseq_carry']:
-                mk('carry_deseq', r['team'], r['i0'], x=b0[0], y=b0[1], x2=b1[0], y2=b1[1], ok=True, elim=el)
-
-    for a, b in zip(runs, runs[1:]):
-        ba, bb = ball(a['i1']), ball(b['i0'])
-        dt = frames[b['i0']]['t'] - frames[a['i1']]['t']
-        if a['team'] == b['team']:
-            if dt <= cfg['max_pass_s']:
-                el = eliminated(frames, a['i1'], b['i0'], a['team'], ba, bb)
-                kind = 'pass_deseq' if el >= cfg['deseq'] and _fwd(a['team'], ba, bb) > 0 else 'pass'
-                mk(kind, a['team'], a['i1'], x=ba[0], y=ba[1], x2=bb[0], y2=bb[1], ok=True, elim=el)
-        elif b.get('avant') == 'vol' and dt <= cfg['max_pass_s']:
-            # le ballon a voyagé puis l'adversaire l'a : passe ratée (l'appli en déduit la perte / la récup)
-            el = eliminated(frames, a['i1'], b['i0'], a['team'], ba, bb)
-            mk('pass', a['team'], a['i1'], x=ba[0], y=ba[1], x2=bb[0], y2=bb[1], ok=False, elim=el)
-        elif dt <= 3.0:
-            # ballon disputé puis changement d'équipe : duel. Gagné par Nous = Z (recup), perdu = E (perte).
-            mk('recup' if b['team'] == 'N' else 'perte', 'N', b['i0'], x=bb[0], y=bb[1])
-
-    # frappes : ballon qui part vite vers le but adverse depuis moins de shot_zone m
-    last_shot = -99
-    for i in range(1, len(frames)):
-        v, b0, b1 = sp[i], ball(i - 1), ball(i)
-        if v is None or not b0 or not b1 or v < cfg['shot_speed'] or frames[i]['t'] - last_shot < 3:
+    tr = transfers(frames, cfg)
+    bounds = [-1] + [x for t in tr for x in t] + [len(frames)]
+    # 1. transferts : passes réussies / ratées, frappes
+    for n, (i0, i1) in enumerate(tr):
+        lo = tr[n - 1][1] if n else 0
+        hi = tr[n + 1][0] if n + 1 < len(tr) else len(frames) - 1
+        team, _ = who(i0, -1, lo, i0)
+        if team is None:                                  # personne au départ : le plus proche du ballon, à 8 m
+            f = frames[i0]
+            n_, e_ = _nearest(f['N'], ball(i0)), _nearest(f['E'], ball(i0))
+            cands = [(d[0], t) for d, t in ((n_, 'N'), (e_, 'E')) if d and d[0] <= 8]
+            team = min(cands)[1] if cands else None
+        if team is None:
             continue
-        team = st[i - 1][0] if st[i - 1][0] in ('N', 'E') else None
-        if team is None:                                  # tireur : dernière équipe à avoir eu le ballon
-            prev = [s for s in segs if s['i1'] < i]
-            team = prev[-1]['team'] if prev else None
-        if not team:
-            continue
+        after, _ = who(i1, 1, i1, hi)
+        b0, b1 = ball(i0), ball(i1)
         gx = L if team == 'N' else 0.0
-        dist_goal = math.dist(b0, (gx, W / 2))
-        toward = _fwd(team, b0, b1) > 0 and abs((b1[1] - b0[1]) / max(1e-6, abs(b1[0] - b0[0]))) < 1.2
-        if dist_goal <= cfg['shot_zone'] and toward:
-            mk('shot', team, i - 1, x=b0[0], y=b0[1], res='hors')   # cadrée ou non : invisible sur le radar → à corriger
-            last_shot = frames[i]['t']
+        toward = _fwd(team, b0, b1) > 0 and abs(b1[1] - b0[1]) <= 1.2 * abs(b1[0] - b0[0])
+        end_goal = abs(b1[0] - gx) <= 8 and 20 <= b1[1] <= 48
+        if toward and math.dist(b0, (gx, W / 2)) <= cfg['shot_zone'] and (end_goal or after is None):
+            mk('shot', team, i0, x=b0[0], y=b0[1], res='hors')   # cadrée ou non : invisible sur le radar → à corriger
+            continue
+        el = eliminated(frames, i0, i1, team, b0, b1)
+        if after == team:
+            kind = 'pass_deseq' if el >= cfg['deseq'] and _fwd(team, b0, b1) > 0 else 'pass'
+            mk(kind, team, i0, x=b0[0], y=b0[1], x2=b1[0], y2=b1[1], ok=True, elim=el)
+        elif after is not None or b1[1] <= 2 or b1[1] >= W - 2 or b1[0] <= 1 or b1[0] >= L - 1:
+            # récupérée par l'adversaire, ou ballon sorti du terrain : passe ratée
+            mk('pass', team, i0, x=b0[0], y=b0[1], x2=b1[0], y2=b1[1], ok=False, elim=el)
+
+    # 2. entre deux transferts (ballon au pied) : conduites et duels
+    for n in range(len(bounds) // 2):
+        lo, hi = bounds[2 * n] + 1, bounds[2 * n + 1] - 1
+        if hi - lo < 1:
+            continue
+        held = [(k, H[k]) for k in range(lo, hi + 1) if H[k] in ('N', 'E')]
+        # conduite : même équipe du début à la fin, le ballon avance
+        if held and all(h == held[0][1] for _, h in held):
+            team = held[0][1]
+            b0, b1 = ball(held[0][0]), ball(held[-1][0])
+            if _fwd(team, b0, b1) >= cfg['carry_min']:
+                el = eliminated(frames, held[0][0], held[-1][0], team, b0, b1)
+                if el >= cfg['deseq_carry']:
+                    mk('carry_deseq', team, held[0][0], x=b0[0], y=b0[1], x2=b1[0], y2=b1[1], ok=True, elim=el)
+        # duel : l'équipe change au pied (2 images de suite pour chaque équipe)
+        runs = []
+        for k, h in held:
+            if runs and runs[-1][0] == h:
+                runs[-1][2] = k
+                runs[-1][3] += 1
+            else:
+                runs.append([h, k, k, 1])
+        runs = [r for r in runs if r[3] >= 2]
+        for a, b in zip(runs, runs[1:]):
+            if a[0] != b[0] and frames[b[1]]['t'] - frames[a[2]]['t'] <= cfg['duel_s']:
+                mk('recup' if b[0] == 'N' else 'perte', 'N', b[1], x=ball(b[1])[0], y=ball(b[1])[1])
+
     ev.sort(key=lambda e: e['t'])
     return ev
 
