@@ -1,6 +1,7 @@
 """Du radar (positions image par image) aux indicateurs de jeu et aux actions de l'application.
 
-Entrée : liste de dict(t, rouge=[(x,y)], noir=[(x,y)], ballon=(x,y)|None) en mètres (repère du radar Veo).
+Entrée : liste de dict(t, <couleur>=[(x,y)], <autre couleur>=[(x,y)], ballon=(x,y)|None) en mètres (repère du
+radar Veo). Couleurs : rouge / noir (ancien radar) ou jaune / noir (nouveau radar).
 Sortie : repère de l'application (105 x 68, Nous attaque vers la droite) et les MÊMES actions que le codage
 manuel du coach, au format JSON de l'appli (src = 'ia') : passes réussies / ratées, passes et conduites de
 déséquilibre, duels gagnés / perdus (Z / E), frappes. Rien d'autre (choix du coach, 9 nov.).
@@ -9,7 +10,15 @@ Tout est approximatif : le radar ne dit pas QUI est qui, seulement où sont les 
 import math
 
 L, W = 105.0, 68.0
-OTHER = {'rouge': 'noir', 'noir': 'rouge'}
+COLORS = ('rouge', 'noir', 'jaune')
+OTHER = {'rouge': 'noir', 'noir': 'rouge', 'jaune': 'noir'}
+
+
+def other(frames, nous):
+    """Clé de l'adversaire : l'autre couleur présente dans les images (noir face à rouge OU à jaune)."""
+    keys = {k for f in frames[:50] for k in COLORS if k in f}
+    rest = sorted(keys - {nous})
+    return rest[0] if len(rest) == 1 else OTHER[nous]
 
 
 def _median(v):
@@ -23,10 +32,11 @@ def attack_right(frames, nous):
     Chaque équipe passe en moyenne plus de temps dans sa moitié : celle dont les marques sont le plus à gauche
     défend à gauche. Fiable sur une mi-temps, fragile sur un court extrait → toujours vérifiable (--sens).
     (Les gardiens ne servent pas : Veo les colore selon leur maillot, souvent dans la couleur de l'autre équipe.)"""
-    xs = {t: [x for f in frames for x, _ in f[t]] for t in (nous, OTHER[nous])}
-    if not xs[nous] or not xs[OTHER[nous]]:
+    eux = other(frames, nous)
+    xs = {t: [x for f in frames for x, _ in f.get(t, [])] for t in (nous, eux)}
+    if not xs[nous] or not xs[eux]:
         return True
-    return _median(xs[nous]) <= _median(xs[OTHER[nous]])
+    return _median(xs[nous]) <= _median(xs[eux])
 
 
 def normalize(frames, nous, right=None):
@@ -36,8 +46,9 @@ def normalize(frames, nous, right=None):
     def tr(p):
         return (round(p[0], 2), round(p[1], 2)) if right else (round(L - p[0], 2), round(W - p[1], 2))
     out = []
+    eux = other(frames, nous)
     for f in frames:
-        g = dict(t=f['t'], N=[tr(p) for p in f[nous]], E=[tr(p) for p in f[OTHER[nous]]],
+        g = dict(t=f['t'], N=[tr(p) for p in f.get(nous, [])], E=[tr(p) for p in f.get(eux, [])],
                  ballon=tr(f['ballon']) if f.get('ballon') else None)
         fix_keepers(g)
         out.append(g)

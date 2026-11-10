@@ -1,9 +1,11 @@
 """Lecture du radar 2D de Veo (mini-carte en haut à droite du lecteur Veo Analytics).
 
-Veo calcule déjà la position des 22 joueurs et l'affiche sur ce radar. On lit simplement les pixels :
-  - triangles rouges  = une équipe
-  - ronds noirs       = l'autre équipe
-  - croix jaune       = le ballon (à confirmer sur plus de vidéos)
+Veo calcule déjà la position des 22 joueurs et l'affiche sur ce radar. On lit simplement les pixels.
+Deux affichages connus :
+  1. ancien : fond bleu-ardoise, triangles rouges / ronds noirs, croix jaune = ballon  → clés « rouge », « noir »
+  2. nouveau (nov. 2026) : panneau transparent assombri, lignes grises, ronds jaunes numérotés / triangles noirs
+     numérotés, croix orange = ballon ; le panneau peut être déplacé, agrandi, et même dépasser du haut de
+     l'écran                                                                            → clés « jaune », « noir »
 Pas besoin de carte graphique : OpenCV + numpy suffisent.
 
 Repère de sortie : mètres, 105 x 68, tel que le radar l'affiche (x = 0 à gauche du radar, y = 0 en haut).
@@ -101,15 +103,185 @@ def read_frame(frame, box):
     return dict(rouge=r, noir=k, ballon=ball)
 
 
+# ---------------------------------------------------------------------------------------------------------
+# Nouveau radar (nov. 2026) : on le trouve par ses lignes (gabarit du terrain dessiné, plusieurs tailles),
+# puis on vérifie qu'il contient bien des marques de joueurs.
+RATIO2 = 1.56                    # largeur / hauteur du terrain dessiné (mesuré : 465 x 298 px et 223 x 143 px)
+BOX2 = dict(depth=0.150, height=0.587, circle=0.0815)   # surfaces (profondeur / largeur, hauteur / hauteur), rond central (rayon / largeur)
+MARK2 = 0.043                    # diamètre d'une marque / largeur du radar
+MIN_W2 = 300                     # en dessous, les marques font < 13 px : illisibles → agrandir le radar dans Veo
+YELLOW2 = dict(h=(22, 36), s_min=120, v_min=190)        # ronds jaunes (le fond assombri reste sous V 120)
+DARK2 = 32                                              # triangles noirs : max(B,G,R) < 32
+ORANGE2 = dict(h=(3, 17), s_min=150, v_min=170)         # croix du ballon
+
+
+def _line_mask(frame):
+    """Traits fins clairs et peu colorés (les lignes grises du radar)."""
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    th = cv2.morphologyEx(hsv[:, :, 2], cv2.MORPH_TOPHAT, np.ones((7, 7), np.uint8)).astype(np.float32)
+    th[hsv[:, :, 1] > 70] = 0
+    return cv2.GaussianBlur(np.clip(th - 15, 0, 60), (0, 0), 1.0)
+
+
+_tpl_cache = {}
+
+
+def _template(w):
+    k = int(round(w * 4))
+    if k in _tpl_cache:
+        return _tpl_cache[k]
+    h = w / RATIO2
+    W_, H_ = int(round(w)) + 1, int(round(h)) + 1
+    t = np.zeros((H_, W_), np.float32)
+    X = lambda v: int(round(v * w / L)); Y = lambda v: int(round(v * h / W))  # noqa: E731
+    cv2.rectangle(t, (0, 0), (W_ - 1, H_ - 1), 1, 1)
+    cv2.line(t, (X(L / 2), 0), (X(L / 2), H_ - 1), 1, 1)
+    r = int(round(BOX2['circle'] * w))
+    cv2.ellipse(t, (X(L / 2), Y(W / 2)), (r, r), 0, 0, 360, 1, 1)
+    d, bh = BOX2['depth'] * L, BOX2['height'] * W
+    for x0, x1 in ((0, d), (L - d, L)):
+        cv2.rectangle(t, (X(x0), Y(W / 2 - bh / 2)), (X(x1), Y(W / 2 + bh / 2)), 1, 1)
+    t = cv2.GaussianBlur(t, (0, 0), 1.0)
+    t -= t.mean()
+    _tpl_cache[k] = (t, float((t > 0).sum()))
+    return _tpl_cache[k]
+
+
+def _score_at(mask, box):
+    """Force moyenne des lignes du gabarit posé sur `box` (même mesure que la recherche)."""
+    x, y, w = box
+    t, n = _template(w)
+    pad = max(0, -y)
+    m = cv2.copyMakeBorder(mask, pad, 0, 0, 0, cv2.BORDER_CONSTANT, value=0) if pad else mask
+    yy = y + pad
+    if x < 0 or yy + t.shape[0] > m.shape[0] or x + t.shape[1] > m.shape[1]:
+        return 0.0
+    return float((m[yy:yy + t.shape[0], x:x + t.shape[1]] * t).sum() / n)
+
+
+def _candidates(mask, wmin=MIN_W2, wmax=1100, step=1.03, pad_top=80, keep=6):
+    """Meilleures positions du gabarit (x, y, w) ; y peut être négatif (radar qui dépasse du haut)."""
+    m = cv2.copyMakeBorder(mask, pad_top, 0, 0, 0, cv2.BORDER_CONSTANT, value=0)
+    cands = []
+    w = float(wmin)
+    while w <= wmax:
+        t, n = _template(w)
+        if t.shape[0] < m.shape[0] and t.shape[1] < m.shape[1]:
+            r = cv2.matchTemplate(m, t, cv2.TM_CCORR) / n
+            for _ in range(2):                            # 2 pics par taille
+                _, mx, _, loc = cv2.minMaxLoc(r)
+                cands.append((mx, (loc[0], loc[1] - pad_top, w)))
+                cv2.rectangle(r, (loc[0] - 20, loc[1] - 20), (loc[0] + 20, loc[1] + 20), -1e9, -1)
+        w *= step
+    cands.sort(key=lambda c: -c[0])
+    out = []
+    for sc, b in cands:                                   # on garde des positions bien différentes
+        if all(abs(b[0] - o[1][0]) > 15 or abs(b[1] - o[1][1]) > 15 or abs(b[2] / o[1][2] - 1) > 0.06 for o in out):
+            out.append((sc, b))
+        if len(out) >= keep:
+            break
+    return out
+
+
+def _refine(mask, box, pad_top=80):
+    """Ajuste position et taille au pixel près autour de `box`."""
+    x, y, w = box
+    best = (_score_at(mask, box), box)
+    for ww in np.arange(w * 0.97, w * 1.03, max(0.5, w * 0.003)):
+        for dx in range(-4, 5):
+            for dy in range(-4, 5):
+                b = (x + dx, y + dy, float(ww))
+                s = _score_at(mask, b)
+                if s > best[0]:
+                    best = (s, b)
+    return best
+
+
+def _marks_ok(d):
+    return len(d['jaune']) >= 3 and len(d['noir']) >= 3 and len(d['jaune']) + len(d['noir']) >= 9
+
+
+def find_radar2(frame, prev=None, mask=None):
+    """Radar nouveau style : (x, y, w, score) ou None. `prev` = résultat précédent (le radar bouge rarement)."""
+    H = frame.shape[0]
+    if mask is None:
+        mask = _line_mask(frame)
+        mask[int(H * 0.55):] = 0                           # le radar est dans le haut de l'écran
+    if prev is not None:
+        s = _score_at(mask, prev[:3])
+        if s >= 0.6 * prev[3] and _marks_ok(read_frame2(frame, prev)):
+            return prev[:3] + (max(prev[3] * 0.9, s) if s < prev[3] else prev[3],)
+    for sc, b in _candidates(mask):
+        s, b = _refine(mask, (int(b[0]), int(b[1]), b[2]))
+        if _marks_ok(read_frame2(frame, b + (s,))):
+            return b + (s,)
+    return None
+
+
+def read_frame2(frame, box):
+    """Marques du nouveau radar. box = (x, y, w[, score]) ; renvoie dict(jaune, noir, ballon) en mètres."""
+    x, y, w = box[0], box[1], box[2]
+    h = w / RATIO2
+    pad = int(0.03 * w)
+    X0, Y0 = max(0, int(x) - pad), max(0, int(y) - pad)
+    c = frame[Y0:int(y + h) + pad, X0:int(x + w) + pad]
+    if c.size == 0:
+        return dict(jaune=[], noir=[], ballon=None)
+    hsv = cv2.cvtColor(c, cv2.COLOR_BGR2HSV).astype(np.int16)
+    H_, S, V = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    d = MARK2 * w
+    a_ref = np.pi * (d / 2) ** 2
+    k = max(3, int(d * 0.35)) | 1
+    ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    yel = ((H_ >= YELLOW2['h'][0]) & (H_ <= YELLOW2['h'][1]) & (S > YELLOW2['s_min']) & (V > YELLOW2['v_min'])).astype(np.uint8)
+    yel = cv2.morphologyEx(yel, cv2.MORPH_CLOSE, ker)     # bouche le numéro
+    dark = (c.max(axis=2) < DARK2).astype(np.uint8)
+    dark = cv2.morphologyEx(dark, cv2.MORPH_CLOSE, ker)
+    org = ((H_ >= ORANGE2['h'][0]) & (H_ <= ORANGE2['h'][1]) & (S > ORANGE2['s_min']) & (V > ORANGE2['v_min'])).astype(np.uint8)
+
+    def blobs(mask, lo, hi):
+        n, _, st, cen = cv2.connectedComponentsWithStats(mask)
+        out = []
+        for i in range(1, n):
+            a = st[i, 4]
+            if lo * a_ref <= a <= hi * a_ref:
+                out.append((cen[i][0], cen[i][1], int(a)))
+            elif hi * a_ref < a < 4 * hi * a_ref:          # marques collées
+                kk = int(round(a / ((lo + hi) / 2 * a_ref)))
+                out += [(cen[i][0], cen[i][1], int(a))] * max(1, min(kk, 3))
+        return out
+    J = blobs(yel, 0.45, 1.6)
+    N = blobs(dark, 0.30, 1.4)
+    O = blobs(org, 0.10, 1.5)
+    ball = max(O, key=lambda b: b[2]) if O else None
+
+    def to_m(px, py):
+        return (round((px + X0 - x) / w * L, 2), round((py + Y0 - y) / h * W, 2))
+    # Le porteur : la croix recouvre sa marque. Si aucune marque entière n'est sous la croix mais qu'il reste
+    # assez de pixels jaunes (ou noirs) autour, on ajoute un joueur de cette couleur à la place du ballon.
+    if ball:
+        bx, by = ball[0], ball[1]
+        if not any((a - bx) ** 2 + (b - by) ** 2 <= (0.6 * d) ** 2 for a, b, _ in J + N):
+            yy, xx = np.ogrid[:c.shape[0], :c.shape[1]]
+            near = (xx - bx) ** 2 + (yy - by) ** 2 <= (0.8 * d) ** 2
+            ny, nd = int((yel.astype(bool) & near).sum()), int((dark.astype(bool) & near).sum())
+            if max(ny, nd) >= 0.15 * a_ref:
+                (J if ny >= nd else N).append((bx, by, 0))
+    return dict(jaune=[to_m(a, b) for a, b, _ in J], noir=[to_m(a, b) for a, b, _ in N],
+                ballon=to_m(ball[0], ball[1]) if ball else None)
+
+
 def read_video(path, fps=5.0, progress=None):
-    """Lit toute la vidéo à `fps` images par seconde. Renvoie une liste de dict(t=secondes, rouge, noir, ballon)."""
+    """Lit toute la vidéo à `fps` images par seconde. Renvoie une liste de dict(t=secondes, <couleurs>, ballon).
+    Ancien radar : clés rouge / noir. Nouveau radar : clés jaune / noir. Les images sans radar lisible sont sautées
+    (read_video.skipped donne leur nombre)."""
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
         raise SystemExit('Impossible d\'ouvrir la vidéo : ' + path)
     src = cap.get(cv2.CAP_PROP_FPS) or 25.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
     every = max(1, int(round(src / fps)))
-    out, box, i = [], None, 0
+    out, box, box2, i, style, skipped, retry = [], None, None, 0, None, 0, 0
     while True:
         ok = cap.grab()
         if not ok:
@@ -118,15 +290,35 @@ def read_video(path, fps=5.0, progress=None):
             ok, fr = cap.retrieve()
             if not ok:
                 break
-            if box is None or i % (every * 50) == 0:     # on revérifie la place du radar de temps en temps
+            if style != 2 and (box is None or i % (every * 50) == 0):   # on revérifie la place du radar de temps en temps
                 b = find_radar(fr) or (find_radar(fr, full=True) if fr.shape[1] < 1000 else None)
                 box = b or box
-            if box is not None:
+                if box is not None:
+                    style = 1
+            d = None
+            if style == 1 and box is not None:
                 d = read_frame(fr, box)
+            elif style != 1:
+                if box2 is not None or retry <= 0:
+                    box2 = find_radar2(fr, box2)
+                    retry = 0 if box2 else 4                   # recherche complète au plus 1 image sur 5
+                    if box2 is not None:
+                        style = 2
+                else:
+                    retry -= 1
+                if box2 is not None:
+                    d = read_frame2(fr, box2)
+            if d is not None:
                 d['t'] = round(i / src, 2)
                 out.append(d)
+            else:
+                skipped += 1
             if progress and total:
                 progress(i / total)
         i += 1
     cap.release()
+    read_video.skipped = skipped
     return out
+
+
+read_video.skipped = 0

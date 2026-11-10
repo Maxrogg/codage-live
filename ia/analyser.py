@@ -6,7 +6,8 @@ Le plus simple (Windows) : glisser la vidéo sur « analyser.bat ».
 En ligne de commande :
     python analyser.py "C:\\chemin\\match.mp4" --nous noir
 Options :
-    --nous noir|rouge   marques du radar qui sont Nous (ronds noirs ou triangles rouges). Sans l'option : question posée.
+    --nous noir|rouge|jaune   couleur des marques du radar qui sont Nous. Sans l'option : question posée.
+                        Nouveau radar Veo : ronds jaunes / triangles noirs. L'agrandir dans Veo (au moins 300 px de large).
     --fps 5             images analysées par seconde (5 suffit).
     --k1 0              seconde de la vidéo où le chrono de l'appli vaut 00:00 (voir onglet Vidéo de l'appli).
     --mi-temps 1        mi-temps de la vidéo (1 ou 2).
@@ -112,6 +113,13 @@ def rapport(path, ev, summ, titre):
     plt.close(fig)
 
 
+def load_raw(path):
+    """radar_brut.json → images avec des tuples (toutes les couleurs connues)."""
+    raw = json.load(open(path, encoding='utf-8'))
+    return [dict(f, ballon=tuple(f['ballon']) if f.get('ballon') else None,
+                 **{k: [tuple(p) for p in f[k]] for k in jeu.COLORS if k in f}) for f in raw]
+
+
 def ask(q, choices, default):
     """Question dans la fenêtre (double-clic). Entrée = valeur par défaut."""
     try:
@@ -124,7 +132,7 @@ def ask(q, choices, default):
 def main():
     ap = argparse.ArgumentParser(description='Analyse automatique d\'une vidéo Veo (radar 2D).')
     ap.add_argument('video')
-    ap.add_argument('--nous', default=None, choices=['noir', 'rouge'])
+    ap.add_argument('--nous', default=None, choices=['noir', 'rouge', 'jaune'])
     ap.add_argument('--fps', type=float, default=5)
     ap.add_argument('--k1', type=float, default=0)
     ap.add_argument('--mi-temps', dest='half', type=int, default=None, choices=[1, 2])
@@ -136,7 +144,7 @@ def main():
         raise SystemExit('Vidéo introuvable : ' + a.video)
     interactive = sys.stdin is not None and sys.stdin.isatty()
     if a.nous is None:
-        a.nous = ask('Nous = quelles marques du radar ? noir = ronds noirs, rouge = triangles rouges', ['noir', 'rouge'], 'noir') if interactive else 'noir'
+        a.nous = ask('Nous = quelle couleur sur le radar ?', ['noir', 'rouge', 'jaune'], 'noir') if interactive else 'noir'
     if a.half is None:
         a.half = int(ask('Quelle mi-temps ?', ['1', '2'], '1')) if interactive else 1
 
@@ -154,14 +162,16 @@ def main():
             last[0] = r
             print('  lecture de la vidéo : %d %%' % (100 * r), end='\r', flush=True)
     if a.video.lower().endswith('.json'):              # lecture déjà faite (radar_brut.json) : on repart de là
-        raw = json.load(open(a.video, encoding='utf-8'))
-        raw = [dict(f, rouge=[tuple(p) for p in f['rouge']], noir=[tuple(p) for p in f['noir']],
-                    ballon=tuple(f['ballon']) if f.get('ballon') else None) for f in raw]
+        raw = load_raw(a.video)
     else:
         raw = radar.read_video(a.video, fps=a.fps, progress=prog)
         print()
+        if radar.read_video.skipped:
+            print('  %d image(s) sans radar lisible, sautées (radar absent, ou trop petit : l\'agrandir dans Veo).'
+                  % radar.read_video.skipped)
     if not raw:
-        raise SystemExit('Radar Veo introuvable : enregistre la vidéo avec le radar 2D affiché en haut à droite.')
+        raise SystemExit('Radar Veo introuvable : enregistre la vidéo avec le radar 2D affiché en haut de l\'écran, '
+                         'assez grand (au moins 300 px de large).')
     right = None if a.sens == 'auto' else (a.sens == 'droite')
     if right is None:
         guess = jeu.attack_right(raw, a.nous)

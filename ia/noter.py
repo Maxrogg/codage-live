@@ -30,8 +30,8 @@ import jeu       # noqa: E402
 
 def load_raw(path):
     raw = json.load(open(path, encoding='utf-8'))
-    return [dict(f, rouge=[tuple(p) for p in f['rouge']], noir=[tuple(p) for p in f['noir']],
-                 ballon=tuple(f['ballon']) if f.get('ballon') else None) for f in raw]
+    return [dict(f, ballon=tuple(f['ballon']) if f.get('ballon') else None,
+                 **{k: [tuple(p) for p in f[k]] for k in jeu.COLORS if k in f}) for f in raw]
 
 
 def run_ref(folder, cfg, tol):
