@@ -164,6 +164,52 @@ g, sc = noter.note(refd, {}, quiet=True)
 ok(g == 100, 'note automatique : passe codée retrouvée → 100 / 100 (%s)' % g)
 g2, _ = noter.note(refd, {'min_pass': '30'}, quiet=True)
 ok(g2 == 0 and os.path.exists(os.path.join(refd, 'historique.csv')), 'note avec réglage modifié (min_pass=30 → 0) + historique')
+# --- nouveau radar Veo (panneau transparent, ronds jaunes / triangles noirs, croix orange) ---
+def radar2_image(x, y, w, jaunes, noirs, ballon, W_=1920, H_=1080):
+    img = np.zeros((H_, W_, 3), np.uint8); img[:] = (60, 120, 90)          # « vidéo » derrière
+    h = w / radar.RATIO2
+    X = lambda m: int(round(x + m / radar.L * w)); Y = lambda m: int(round(y + m / radar.W * h))  # noqa: E731
+    pan = img[max(0, y):int(y + h), x:x + w].astype(np.float32)
+    img[max(0, y):int(y + h), x:x + w] = (pan * 0.45).astype(np.uint8)     # panneau assombri
+    g = (175, 175, 175)
+    cv2.rectangle(img, (x, y), (x + w, int(y + h)), g, 1)
+    cv2.line(img, (X(52.5), y), (X(52.5), int(y + h)), g, 1)
+    cv2.circle(img, (X(52.5), Y(34)), int(radar.BOX2['circle'] * w), g, 1)
+    d, bh = radar.BOX2['depth'] * radar.L, radar.BOX2['height'] * radar.W
+    for a, b in ((0, d), (radar.L - d, radar.L)):
+        cv2.rectangle(img, (X(a), Y(34 - bh / 2)), (X(b), Y(34 + bh / 2)), g, 1)
+    r = int(radar.MARK2 * w / 2)
+    for px, py in jaunes:
+        cv2.circle(img, (X(px), Y(py)), r, (40, 240, 250), -1)
+    for px, py in noirs:
+        cx, cy = X(px), Y(py)
+        tri = np.array([[cx, cy - r - 2], [cx - r - 1, cy + r], [cx + r + 1, cy + r]], np.int32)
+        cv2.fillPoly(img, [tri], (12, 12, 12)); cv2.polylines(img, [tri], True, (235, 235, 235), 1)
+    bx, by = X(ballon[0]), Y(ballon[1])
+    cv2.line(img, (bx - r, by), (bx + r, by), (40, 110, 245), 3); cv2.line(img, (bx, by - r), (bx, by + r), (40, 110, 245), 3)
+    return img
+
+
+J2 = [(5, 34), (20, 15), (22, 50), (35, 30), (45, 10), (48, 58), (60, 25), (62, 45), (75, 20), (80, 50)]
+N2 = [(100, 34), (85, 30), (88, 12), (70, 40), (55, 8), (52, 60), (40, 45), (30, 20), (28, 55), (15, 35)]
+img2 = radar2_image(1100, -15, 466, J2, N2, (66, 34))
+b2 = radar.find_radar2(img2)
+ok(b2 is not None and abs(b2[0] - 1100) <= 4 and abs(b2[2] - 466) <= 8, 'nouveau radar trouvé (même coupé en haut) : %s' % (b2,))
+d2 = radar.read_frame2(img2, b2) if b2 else dict(jaune=[], noir=[], ballon=None)
+ok(len(d2['jaune']) == 10 and len(d2['noir']) == 10, 'nouveau radar : %d jaunes, %d noirs' % (len(d2['jaune']), len(d2['noir'])))
+ok(d2['ballon'] is not None and abs(d2['ballon'][0] - 66) < 2.5 and abs(d2['ballon'][1] - 34) < 2.5, 'nouveau radar : ballon %s' % (d2['ballon'],))
+fr2 = [dict(t=0, jaune=J2, noir=N2, ballon=(66, 34))]
+ok(jeu.other(fr2, 'jaune') == 'noir' and jeu.other(fr2, 'noir') == 'jaune', 'adversaire = l\'autre couleur présente (jaune / noir)')
+
+# --- sans radar : équipe d'après la couleur du maillot (images fabriquées) ---
+import sans_radar  # noqa: E402
+def joueur(maillot):
+    im = np.zeros((60, 20, 3), np.uint8); im[:] = (60, 110, 20)              # pelouse bleu-vert
+    im[8:34, 4:16] = maillot; im[34:46, 5:15] = (20, 20, 20)
+    return sans_radar.team_of(im, (0, 0, 20, 60))
+ok(joueur((20, 200, 230)) == 'jaune' and joueur((60, 30, 20)) == 'noir' and joueur((60, 110, 20)) == 'inconnu',
+   'sans radar : maillot jaune / bleu marine / rien = %s / %s / %s' % (joueur((20, 200, 230)), joueur((60, 30, 20)), joueur((60, 110, 20))))
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)

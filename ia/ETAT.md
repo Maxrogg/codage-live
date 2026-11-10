@@ -20,7 +20,9 @@
 ## Prochaines étapes (dans l'ordre)
 1. Le coach valide la branche ia/radar-jaune-noir (puis fusion + push ; les tests `tests/` demandent Node, pas encore installé sur ce PC).
 2. Référence plus longue : 5 à 10 min (≥ 50 actions) enregistrées avec le radar AGRANDI + codées → réglage de `CFG` en suivant la note (avant / après, voir CLAUDE.md).
-3. Le live SANS radar (demande du coach, 10 nov.) : en live il n'y a que la caméra Veo (qui suit le jeu) → détecter joueurs (maillots jaunes / noirs) et ballon dans l'image, recaler le terrain image par image, sortir des positions au format radar_brut → jeu.py inchangé. Le radar sert de vérité pour mesurer cette version.
+3. Le live SANS radar (demande du coach, 10 nov. ; branche ia/live-sans-radar) : en live il n'y a que la caméra Veo, qui suit le jeu (PAS de vue panoramique d'après le coach) → détecter joueurs et ballon dans l'image, recaler le terrain image par image, sortir le format radar_brut → jeu.py inchangé. Le radar sert de vérité (test.mp4 = enregistrement radar − 13,84 s).
+   - Fait : `sans_radar.py` étape 1 = détection. Couleurs seules : trop de faux (maillots « noirs » = bleu marine, proche du synthétique). YOLO (yolo11s, processeur, ~1,8 s / image) : quasiment tous les joueurs à l'image trouvés, jaunes / bleu marine bien séparés, ballon souvent trouvé. Reste : arbitre (maillot pâle) parfois pris pour un noir, spectateurs derrière la clôture.
+   - À faire : étape 2 = passage image → mètres (repères du terrain : lignes, rond central, surfaces ; suivi du décor entre deux images), mesurer l'erreur contre le radar ; étape 3 = export radar_brut + noter.py (objectif : la note du radar).
 4. Plus tard (sur demande du coach) : CPA.
 
 ## Rappels
