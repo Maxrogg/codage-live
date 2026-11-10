@@ -210,6 +210,16 @@ def joueur(maillot):
 ok(joueur((20, 200, 230)) == 'jaune' and joueur((60, 30, 20)) == 'noir' and joueur((60, 110, 20)) == 'inconnu',
    'sans radar : maillot jaune / bleu marine / rien = %s / %s / %s' % (joueur((20, 200, 230)), joueur((60, 30, 20)), joueur((60, 110, 20))))
 
+# --- sans radar : suivi de la caméra par le décor (image fabriquée, décalée de 40 px) ---
+rng_ = np.random.default_rng(1)
+deco = cv2.GaussianBlur((rng_.random((600, 900)) * 255).astype(np.uint8), (0, 0), 1.5)
+deco = cv2.cvtColor(cv2.resize(deco, (1200, 800)), cv2.COLOR_GRAY2BGR)
+a_, b_ = deco[100:640, 100:1060], deco[100:640, 140:1100]       # la caméra tourne : le décor glisse de 40 px
+trk = sans_radar.CameraTracker()
+Hab = trk.homography(trk.features(a_, []), trk.features(b_, []))
+dx = sans_radar.project(Hab, [(480, 270)])[0][0] - 480 if Hab is not None else 99
+ok(Hab is not None and abs(dx + 40) < 2, 'sans radar : mouvement de caméra retrouvé par le décor (%.1f px pour -40)' % dx)
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)
