@@ -92,9 +92,11 @@ def detect(model, frame, imgsz=2880, conf=0.12):
 # ---------------------------------------------------------------------------------------------------------
 # Étape 2 : de l'image aux mètres. La caméra Veo tourne et zoome autour d'un point fixe : d'une image à la
 # suivante, tout le décor (arbres, maisons, clôture) se déplace selon une homographie. On cale UNE image
-# (G = image → terrain), puis on suit la caméra par le décor : G_k = G_{k-1} · H(k → k-1).
-# Mesure (10 nov. 2026, test.mp4, 161 images, calage sur l'image à 8 s) : erreur médiane des joueurs 1,24 m
-# (0,7-1 m près du calage, 2-3 m après 25 s : dérive), ballon vu 90 %, erreur médiane ballon 1,8 m.
+# (G = image → terrain), puis on relie chaque image à l'image de référence par le décor (directement : le décor
+# ne bouge pas, ça marche sur 100 % des images de test.mp4 ; sinon de proche en proche) : G_k = G_ref · H(k → ref).
+# Mesures (10 nov. 2026, test.mp4, 161 images) : calage sur 1 image → erreur médiane des joueurs 1,22 m ;
+# calage commun sur toutes les images (calibrate_joint) → 0,70 m. Ballon vu 90 %, erreur médiane 1,8 m.
+# Pour le live : garder l'image de référence + son calage pour le terrain du club (même place de la Veo).
 
 def project(G, pts):
     """Points image → terrain (mètres du radar) par l'homographie G."""
@@ -130,6 +132,47 @@ class CameraTracker:
         pb = np.float32([kb[m.trainIdx].pt for m in ms])
         H, inl = cv2.findHomography(pa, pb, cv2.RANSAC, 3.0)
         return H if H is not None and inl.sum() >= 15 else None
+
+
+def match_one_to_one(P, R, tol):
+    """Appariement un pour un (le plus proche d'abord) entre points P et R ; renvoie [(i, j, distance)]."""
+    P, R = np.asarray(P, float), np.asarray(R, float)
+    if not len(P) or not len(R):
+        return []
+    d = np.hypot(P[:, None, 0] - R[None, :, 0], P[:, None, 1] - R[None, :, 1])
+    out, up, ur = [], set(), set()
+    for k in np.argsort(d, axis=None):
+        a, b = divmod(int(k), d.shape[1])
+        if a in up or b in ur or d[a, b] > tol:
+            continue
+        up.add(a); ur.add(b); out.append((a, b, float(d[a, b])))
+    return out
+
+
+def calibrate_joint(G_ref, samples, iters=4, tol=3.0):
+    """Calage de l'image de RÉFÉRENCE sur beaucoup d'images à la fois (installation, une fois par terrain).
+    samples = [(H_k_vers_ref, joueurs_k, image_radar_k)] : chaque pied détecté est ramené dans l'image de
+    référence par le décor, apparié à sa marque radar (même équipe), puis UNE homographie est ajustée.
+    Mesure (test.mp4, 10 nov. 2026) : erreur médiane 1,22 m (calage sur 1 image) → 0,70 m ; en validation
+    croisée (calé sur une moitié de la vidéo, mesuré sur l'autre) 0,74 et 0,83 m."""
+    G = G_ref
+    for _ in range(iters):
+        src, dst = [], []
+        for Hk, players, rad in samples:
+            for team in ('jaune', 'noir'):
+                P = [p['foot'] for p in players if p['team'] == team]
+                if not P or not rad.get(team):
+                    continue
+                Pref = project(Hk, P)
+                for a, b, _ in match_one_to_one(project(G, Pref), rad[team], tol):
+                    src.append(Pref[a]); dst.append(rad[team][b])
+        if len(src) < 8:
+            break
+        G2, _ = cv2.findHomography(np.float32(src), np.float32(dst), cv2.RANSAC, 1.5)
+        if G2 is None:
+            break
+        G = G2
+    return G
 
 
 def on_pitch_m(q, margin=3.0):

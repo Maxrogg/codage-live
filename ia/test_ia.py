@@ -1,6 +1,7 @@
 """Tests du module d'analyse (sans vidéo réelle) : python test_ia.py
 Fabrique des images de radar façon Veo, puis vérifie lecture, sens, gardien, possession, actions, format appli."""
 import json
+import math
 import os
 import sys
 import tempfile
@@ -226,6 +227,21 @@ fv = [dict(t=i * 0.2, jaune=[(30 + i, 20)] + ([(50, -6)] if i == 2 else []), noi
 cv = sans_radar.clean_brut(fv)
 ok(cv[3]['ballon'] != (95, 60) and cv[3]['ballon'] is not None, 'sans radar : faux ballon (saut de 65 m) rejeté et comblé : %s' % (cv[3]['ballon'],))
 ok(len(cv[2]['jaune']) == 1 and len(cv[0]['noir']) == 11, 'sans radar : spectateur hors terrain écarté, 11 joueurs max par équipe')
+
+# --- sans radar : calage commun sur plusieurs images (vrai calage connu, départ faussé) ---
+Gv = np.array([[0.06, 0.01, -20.0], [0.002, 0.11, -35.0], [0.0, 0.0006, 1.0]])       # image → terrain
+Gi = np.linalg.inv(Gv)
+smp = []
+for k in range(6):
+    pts = [(10 + 15 * j + 3 * k, 8 + (7 * j + 11 * k) % 52) for j in range(6)]
+    img_pts = sans_radar.project(Gi, pts)
+    pl = [dict(team='jaune' if j % 2 else 'noir', foot=tuple(img_pts[j])) for j in range(6)]
+    smp.append((np.eye(3), pl, dict(jaune=[pts[j] for j in range(6) if j % 2], noir=[pts[j] for j in range(6) if not j % 2])))
+G0 = Gv @ np.array([[1.01, 0, 6], [0, 0.99, -5], [0, 0, 1]])                         # départ faussé (~1 m)
+Gc = sans_radar.calibrate_joint(G0, smp)
+e_av = np.median([math.dist(a, b) for a, b in zip(sans_radar.project(G0, [p['foot'] for p in smp[0][1]]), sans_radar.project(Gv, [p['foot'] for p in smp[0][1]]))])
+e_ap = np.median([math.dist(a, b) for a, b in zip(sans_radar.project(Gc, [p['foot'] for p in smp[0][1]]), sans_radar.project(Gv, [p['foot'] for p in smp[0][1]]))])
+ok(e_ap < 0.05 < e_av, 'sans radar : calage commun retrouve le vrai calage (%.2f m → %.3f m)' % (e_av, e_ap))
 
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
