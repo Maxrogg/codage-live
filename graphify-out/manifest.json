@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "sw.js": {
-    "mtime": 1794242084.6454914,
-    "seen": 1794322469.654253,
-    "ast_hash": "db64c32194986823e9ef64880c02509a",
+    "mtime": 1794322918.7626584,
+    "seen": 1794322925.624804,
+    "ast_hash": "19020fbe03eb591f183564f2fe6acf4a",
     "semantic_hash": ""
   },
   "tests/ana.js": {
@@ -234,15 +234,15 @@
     "semantic_hash": ""
   },
   "tools/update_sw.py": {
-    "mtime": 1794241704.3845973,
-    "seen": 1794322469.6542976,
-    "ast_hash": "0eb42140edf834ea84dc44952385ba31",
+    "mtime": 1794322483.123169,
+    "seen": 1794322925.6248353,
+    "ast_hash": "22ff590457b070da08f836dd705ecd96",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794241704.3805974,
-    "seen": 1794322469.6542995,
-    "ast_hash": "94d5a168f7a87fde0bfd1e6843047851",
+    "mtime": 1794322918.6480033,
+    "seen": 1794322925.624839,
+    "ast_hash": "9ab1dac55ad7afefb8eee20bba03e7d1",
     "semantic_hash": ""
   },
   "README.md": {
@@ -285,6 +285,12 @@
     "mtime": 1794240726.3876863,
     "seen": 1794322469.6543145,
     "ast_hash": "1da9427fd86d899122c7c01770f106f7",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1794322918.6477299,
+    "seen": 1794322925.6248374,
+    "ast_hash": "3eaa88dd670a80c66cdb853ae5c3101e",
     "semantic_hash": ""
   }
 }

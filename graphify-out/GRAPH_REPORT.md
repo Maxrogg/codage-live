@@ -1,17 +1,17 @@
 # Graph Report - codage-live  (2026-11-10)
 
 ## Corpus Check
-- 44 files · ~33,093 words
+- 45 files · ~33,620 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .bat 3, .css 1)
 
 ## Summary
-- 366 nodes · 637 edges · 25 communities (18 shown, 7 thin omitted)
+- 374 nodes · 644 edges · 26 communities (19 shown, 7 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6df67a83`
+- Built from commit: `af43227d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -36,18 +36,19 @@
 - chart.js
 - sw.js
 - tests/README.md
+- Codage live — consignes pour tout assistant de code (Claude, Aider, OpenCode, Continue…)
 
 ## God Nodes (most connected - your core abstractions)
-1. `main()` - 15 edges
-2. `init()` - 15 edges
+1. `init()` - 15 edges
+2. `main()` - 15 edges
 3. `summary()` - 14 edges
 4. `initButtons()` - 13 edges
 5. `actions()` - 12 edges
 6. `teamInsights()` - 12 edges
 7. `init()` - 10 edges
-8. `press()` - 9 edges
-9. `refresh()` - 9 edges
-10. `init()` - 9 edges
+8. `refresh()` - 9 edges
+9. `drawEvent()` - 9 edges
+10. `press()` - 9 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `main()` --calls--> `actions()`  [EXTRACTED]
@@ -64,7 +65,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (25 total, 7 thin omitted)
+## Communities (26 total, 7 thin omitted)
 
 ### Community 0 - "t3.js"
 Cohesion: 0.05
@@ -127,8 +128,8 @@ Cohesion: 0.33
 Nodes (5): Codage live — application de match, Données, Modifier le code (avec Claude), Publier sur GitHub Pages, Utiliser
 
 ### Community 15 - "Codage live — consignes pour Claude"
-Cohesion: 0.40
-Nodes (4): Codage live — consignes pour Claude, Outils et tests (dans ce dépôt), Règles, Structure (aucune compilation, scripts simples sur l'espace de noms global `FC`)
+Cohesion: 0.29
+Nodes (6): Autres assistants, Carte du code (Graphify), Codage live — consignes pour Claude, Outils et tests (dans ce dépôt), Règles, Structure (aucune compilation, scripts simples sur l'espace de noms global `FC`)
 
 ### Community 16 - "momentum.js"
 Cohesion: 0.60
@@ -137,6 +138,10 @@ Nodes (4): compute(), fmt(), summary(), weightOf()
 ### Community 18 - "chart.js"
 Cohesion: 0.83
 Nodes (3): bars(), esc(), momentum()
+
+### Community 25 - "Codage live — consignes pour tout assistant de code (Claude, Aider, OpenCode, Continue…)"
+Cohesion: 0.33
+Nodes (5): Carte du code (Graphify), Codage live — consignes pour tout assistant de code (Claude, Aider, OpenCode, Continue…), Outils et tests (dans ce dépôt), Règles, Structure (aucune compilation, scripts simples sur l'espace de noms global `FC`)
 
 ## Knowledge Gaps
 - **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.

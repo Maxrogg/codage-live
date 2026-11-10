@@ -20,6 +20,9 @@ Outil de codage de match en direct pour un entraîneur de football (Chambéry Sa
 - Début de conversation : `pip install --break-system-packages graphifyy` (deux y : paquet officiel), puis `graphify update .` (sans IA, gratuit) et lire `graphify-out/GRAPH_REPORT.md` avant d'explorer les fichiers. Pour une question de structure : `graphify explain "<nom>"`, `graphify path "<A>" "<B>"`.
 - Après une modification du code : `graphify update .` puis commit avec le reste.
 
+## Autres assistants
+- `AGENTS.md` = copie de ce fichier pour les autres assistants de code (le coach peut basculer sur un autre modèle via FreeLLMAPI). Garder les deux identiques.
+
 ## Outils et tests (dans ce dépôt)
 - `tools/build_app.py` : fabrique l'application (icônes, manifest, sw.js, zip) à partir de `/home/claude/codage-live`.
 - `tests/` : voir `tests/README.md`. Tous doivent passer avant un push.
