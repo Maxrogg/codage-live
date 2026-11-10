@@ -196,6 +196,50 @@ def to_brut(t, players, balls, G):
     return dict(t=round(t, 2), jaune=pos['jaune'], noir=pos['noir'], ballon=ball)
 
 
+def ball_candidates(balls, G, margin=1.0):
+    """Tous les ballons YOLO d'une image, en mètres : [(x, y, confiance)] (hors terrain écarté)."""
+    out = []
+    for x, y, conf in balls:
+        q = project(G, [(x, y)])[0]
+        if on_pitch_m(q, margin):
+            out.append((float(q[0]), float(q[1]), float(conf)))
+    return out
+
+
+def ball_path(cands, times, miss=2.5, vmax=30.0, w_jump=0.15, w_conf=3.0):
+    """Le VRAI ballon parmi les candidats (chaussettes, plots, lignes donnent de faux ballons) : chemin le plus
+    cohérent sur toute la séquence (Viterbi). Coût = sauts au-delà de vmax·dt + manque de confiance ;
+    « pas vu » coûte `miss`. En live : à faire sur une fenêtre glissante de 1-2 s (petit retard).
+    Mesure (test.mp4) : faux ballons à plus de 10 m 20 % → 13 %, erreur médiane 1,6 → 1,5 m, vu 83 % ;
+    note sur les 10 actions 16 → 28 (passes réussies 47 → 59)."""
+    import math
+    T = len(cands)
+    if not T:
+        return []
+    states = [list(c) + [None] for c in cands]
+    em = lambda s: w_conf * (1 - s[2]) if s else miss          # noqa: E731
+    cost = [[em(s) for s in states[0]]]
+    back = [[-1] * len(states[0])]
+    for k in range(1, T):
+        dt = times[k] - times[k - 1]
+        row, brow = [], []
+        for s in states[k]:
+            best = (float('inf'), -1)
+            for j, p in enumerate(states[k - 1]):
+                tr = 0.0 if (s is None or p is None) else w_jump * max(0.0, math.dist(s[:2], p[:2]) - vmax * dt - 2.0) ** 1.5
+                if cost[k - 1][j] + tr < best[0]:
+                    best = (cost[k - 1][j] + tr, j)
+            row.append(best[0] + em(s)); brow.append(best[1])
+        cost.append(row); back.append(brow)
+    j = min(range(len(cost[-1])), key=lambda i: cost[-1][i])
+    path = [None] * T
+    for k in range(T - 1, -1, -1):
+        s = states[k][j]
+        path[k] = (round(s[0], 2), round(s[1], 2)) if s else None
+        j = back[k][j]
+    return path
+
+
 # Nettoyage des positions « vision » avant jeu.py (qui suppose un ballon propre, comme celui du radar Veo).
 CLEAN = dict(
     vmax=30.0,       # m/s : vitesse maximale du ballon (frappe) ; au-delà, c'est un faux ballon

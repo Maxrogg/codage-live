@@ -243,6 +243,14 @@ e_av = np.median([math.dist(a, b) for a, b in zip(sans_radar.project(G0, [p['foo
 e_ap = np.median([math.dist(a, b) for a, b in zip(sans_radar.project(Gc, [p['foot'] for p in smp[0][1]]), sans_radar.project(Gv, [p['foot'] for p in smp[0][1]]))])
 ok(e_ap < 0.05 < e_av, 'sans radar : calage commun retrouve le vrai calage (%.2f m → %.3f m)' % (e_av, e_ap))
 
+# --- sans radar : le vrai ballon parmi de faux ballons plus « confiants » ---
+tt = [i * 0.2 for i in range(20)]
+vrai = [(20 + 1.5 * i, 30) for i in range(20)]                              # ballon qui roule à 7,5 m/s
+cc = [[(vrai[i][0], vrai[i][1], 0.4), ((5, 60) if i % 2 else (90, 8)) + (0.6,)] for i in range(20)]   # leurres qui sautent
+pth = sans_radar.ball_path(cc, tt)
+bons = sum(1 for p, v in zip(pth, vrai) if p and math.dist(p, v) < 0.5)
+ok(bons >= 18, 'sans radar : chemin cohérent du ballon malgré des leurres plus confiants (%d / 20 justes)' % bons)
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)
