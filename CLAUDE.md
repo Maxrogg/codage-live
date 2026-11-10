@@ -15,6 +15,11 @@ Outil de codage de match en direct pour un entraîneur de football (Chambéry Sa
 - Coordonnées en mètres dans un repère où Nous attaque toujours vers la droite (105 x 68).
 - Règles de saisie et de calcul : voir README.md et le récap du projet Claude « Application de code pour match de football ».
 
+## Carte du code (Graphify)
+- `graphify-out/` : graphe du code (graph.json, GRAPH_REPORT.md, graph.html), hors de l'application installée.
+- Début de conversation : `pip install --break-system-packages graphifyy` (deux y : paquet officiel), puis `graphify update .` (sans IA, gratuit) et lire `graphify-out/GRAPH_REPORT.md` avant d'explorer les fichiers. Pour une question de structure : `graphify explain "<nom>"`, `graphify path "<A>" "<B>"`.
+- Après une modification du code : `graphify update .` puis commit avec le reste.
+
 ## Outils et tests (dans ce dépôt)
 - `tools/build_app.py` : fabrique l'application (icônes, manifest, sw.js, zip) à partir de `/home/claude/codage-live`.
 - `tests/` : voir `tests/README.md`. Tous doivent passer avant un push.
