@@ -1,8 +1,8 @@
 {
   "ia/analyser.py": {
-    "mtime": 1794241998.807018,
-    "seen": 1794322469.6541839,
-    "ast_hash": "13d7088fa9937de0b8575676167736dc",
+    "mtime": 1794323124.9422472,
+    "seen": 1794323193.3755813,
+    "ast_hash": "e836183afdbf10f67ac84ba5c3ef1f94",
     "semantic_hash": ""
   },
   "ia/comparer.py": {
@@ -18,15 +18,15 @@
     "semantic_hash": ""
   },
   "ia/radar.py": {
-    "mtime": 1794241704.3822496,
-    "seen": 1794322469.654224,
-    "ast_hash": "1599428fb46502688a2a2428493b3c79",
+    "mtime": 1794323124.940294,
+    "seen": 1794323193.375645,
+    "ast_hash": "de333987c3d7252d91771e92e50e4957",
     "semantic_hash": ""
   },
   "ia/test_ia.py": {
-    "mtime": 1794242045.4010596,
-    "seen": 1794322469.654226,
-    "ast_hash": "be943936d22d933f3b454f85a78fdb91",
+    "mtime": 1794323178.4161663,
+    "seen": 1794323193.3756473,
+    "ast_hash": "a8e9cb6fc05cb3c1be8712207d857e34",
     "semantic_hash": ""
   },
   "js/backup.js": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "sw.js": {
-    "mtime": 1794322918.7626584,
-    "seen": 1794322925.624804,
-    "ast_hash": "19020fbe03eb591f183564f2fe6acf4a",
+    "mtime": 1794323192.1326199,
+    "seen": 1794323193.375686,
+    "ast_hash": "f834b05e7647897292c3f8f6f1e7ae62",
     "semantic_hash": ""
   },
   "tests/ana.js": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794322918.6480033,
-    "seen": 1794322925.624839,
-    "ast_hash": "9ab1dac55ad7afefb8eee20bba03e7d1",
+    "mtime": 1794323178.4151638,
+    "seen": 1794323193.3757367,
+    "ast_hash": "e5342459ef14e8f7d9a59b21b2052bc3",
     "semantic_hash": ""
   },
   "README.md": {
@@ -252,9 +252,9 @@
     "semantic_hash": ""
   },
   "ia/README.md": {
-    "mtime": 1794242632.1248028,
-    "seen": 1794322469.6543024,
-    "ast_hash": "8834ab99b241dd9de0d63fd63c45f5c2",
+    "mtime": 1794323192.1044106,
+    "seen": 1794323193.3757412,
+    "ast_hash": "693fba3cb94c92f8b7a375b063841aa9",
     "semantic_hash": ""
   },
   "index.html": {
@@ -288,9 +288,15 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1794322918.6477299,
-    "seen": 1794322925.6248374,
-    "ast_hash": "3eaa88dd670a80c66cdb853ae5c3101e",
+    "mtime": 1794323178.4156566,
+    "seen": 1794323193.3757348,
+    "ast_hash": "94838116093c0c52df56241a824bfe46",
+    "semantic_hash": ""
+  },
+  "ia/noter.py": {
+    "mtime": 1794323158.430605,
+    "seen": 1794323193.3756416,
+    "ast_hash": "0880737ee9cf3dcee47c4205c217c27d",
     "semantic_hash": ""
   }
 }

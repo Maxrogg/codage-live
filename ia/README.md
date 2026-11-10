@@ -42,6 +42,7 @@ Le dossier `resultats_<nom de la vidéo>` s'ouvre à la fin. Il contient :
 | `rapport.png` | les actions détectées sur le terrain + les comptes |
 | `resume.json` | les comptes |
 | `positions.json` | positions image par image (vérifications) |
+| `radar_brut.json` | lecture brute du radar : petite, sans image ni visage. Glisser ce fichier sur `analyser.bat` relance l'analyse sans la vidéo. |
 
 Pour que les actions tombent au bon moment du chrono : `--k1 <seconde de la vidéo où le chrono vaut 00:00>`.
 
@@ -57,6 +58,21 @@ Pour chaque type d'action, le résultat donne :
 - combien se correspondent (même action à ±4 s).
 
 Le fichier `comparaison.csv` liste chaque action manquée ou en trop, avec sa seconde dans la vidéo, pour aller vérifier.
+
+## Jeu de référence et note automatique (pour régler l'IA)
+
+Une séquence de référence, c'est un dossier avec trois fichiers :
+
+| Fichier | D'où il vient |
+|---|---|
+| `radar_brut.json` | produit par l'analyse de la vidéo |
+| `codage.json` | ton codage de la même vidéo : onglet Vidéo > « Exporter actions + vidéo » |
+| `ref.json` | `{"nous": "noir", "sens": "gauche", "mi_temps": 1}` |
+
+`python noter.py` donne une note sur 100 par type d'action, puis une note globale.
+Chaque essai est ajouté à `historique.csv`.
+
+Ces dossiers contiennent des données du club : ils ne vont jamais dans le dépôt public (le dossier `references` est ignoré).
 
 ## Comment l'IA décide
 

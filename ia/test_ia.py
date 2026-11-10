@@ -151,6 +151,19 @@ man = [dict(kind='pass', team='N', ok=True, video_s=11.5), dict(kind='recup', te
 iae = [dict(kind='pass', team='N', ok=True, video_s=10.0), dict(kind='recup', team='N', video_s=30.0), dict(kind='shot', team='N', video_s=50)]
 pairs = comparer.match(man, iae, 4.0)
 ok(sorted(pairs) == [(0, 0), (2, 2)], 'comparaison : 2 actions communes à ±4 s, la récup à 6 s d\'écart non appariée')
+
+# --- note automatique sur un jeu de référence ---
+import noter  # noqa: E402
+refd = tempfile.mkdtemp()
+r = os.path.join(refd, 'seq1')
+os.makedirs(r)
+json.dump([dict(t=f['t'], noir=f['N'], rouge=f['E'], ballon=f['ballon']) for f in seq(st)], open(os.path.join(r, 'radar_brut.json'), 'w'))
+json.dump({'nous': 'noir', 'sens': 'droite', 'mi_temps': 1}, open(os.path.join(r, 'ref.json'), 'w'))
+json.dump({'format': 'codage-live/actions-video', 'actions': [dict(kind='pass', team='N', ok=True, video_s=0.8)]}, open(os.path.join(r, 'codage.json'), 'w'))
+g, sc = noter.note(refd, {}, quiet=True)
+ok(g == 100, 'note automatique : passe codée retrouvée → 100 / 100 (%s)' % g)
+g2, _ = noter.note(refd, {'min_pass': '30'}, quiet=True)
+ok(g2 == 0 and os.path.exists(os.path.join(refd, 'historique.csv')), 'note avec réglage modifié (min_pass=30 → 0) + historique')
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)

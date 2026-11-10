@@ -17,6 +17,8 @@ Sortie (dossier « resultats_<nom de la vidéo> », à côté de la vidéo) :
     rapport.png         image de synthèse
     resume.json         les comptes
     positions.json      positions image par image (pour vérifier / aller plus loin)
+    radar_brut.json     lecture brute du radar (quelques centaines de Ko par mi-temps, sans image) :
+                        « python analyser.py radar_brut.json » relance l'analyse sans la vidéo.
 """
 import argparse
 import json
@@ -139,7 +141,10 @@ def main():
         a.half = int(ask('Quelle mi-temps ?', ['1', '2'], '1')) if interactive else 1
 
     name = os.path.splitext(os.path.basename(a.video))[0]
-    outdir = a.sortie or os.path.join(os.path.dirname(os.path.abspath(a.video)), 'resultats_' + name)
+    if name == 'radar_brut':                              # relance depuis un dossier de résultats
+        name = os.path.basename(os.path.dirname(os.path.abspath(a.video))).replace('resultats_', '')
+    outdir = a.sortie or (os.path.dirname(os.path.abspath(a.video)) if a.video.lower().endswith('.json')
+                          else os.path.join(os.path.dirname(os.path.abspath(a.video)), 'resultats_' + name))
     os.makedirs(outdir, exist_ok=True)
     t0 = time.time()
     last = [0]
@@ -148,8 +153,13 @@ def main():
         if r - last[0] >= 0.02:
             last[0] = r
             print('  lecture de la vidéo : %d %%' % (100 * r), end='\r', flush=True)
-    raw = radar.read_video(a.video, fps=a.fps, progress=prog)
-    print()
+    if a.video.lower().endswith('.json'):              # lecture déjà faite (radar_brut.json) : on repart de là
+        raw = json.load(open(a.video, encoding='utf-8'))
+        raw = [dict(f, rouge=[tuple(p) for p in f['rouge']], noir=[tuple(p) for p in f['noir']],
+                    ballon=tuple(f['ballon']) if f.get('ballon') else None) for f in raw]
+    else:
+        raw = radar.read_video(a.video, fps=a.fps, progress=prog)
+        print()
     if not raw:
         raise SystemExit('Radar Veo introuvable : enregistre la vidéo avec le radar 2D affiché en haut à droite.')
     right = None if a.sens == 'auto' else (a.sens == 'droite')
@@ -169,6 +179,9 @@ def main():
     summ['nous'] = a.nous
 
     json.dump(frames, open(os.path.join(outdir, 'positions.json'), 'w', encoding='utf-8'))
+    if not a.video.lower().endswith('.json'):
+        # lecture brute du radar : petite, sans image ni visage ; permet de relancer l'analyse sans la vidéo
+        json.dump(raw, open(os.path.join(outdir, 'radar_brut.json'), 'w', encoding='utf-8'), separators=(',', ':'))
     json.dump(summ, open(os.path.join(outdir, 'resume.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     json.dump(app_match(name, ev, a.k1, a.half), open(os.path.join(outdir, 'match_ia.json'), 'w', encoding='utf-8'), ensure_ascii=False)
     rapport(os.path.join(outdir, 'rapport.png'), ev, summ, name)

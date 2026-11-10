@@ -3,3 +3,4 @@ __pycache__/
 /*.png
 resultats_*/
 graphify-out/cache/
+ia/references/

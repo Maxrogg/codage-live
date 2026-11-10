@@ -21,10 +21,12 @@ BLACK_MAX = 26                                          # ronds : max(B,G,R) < 2
 YELLOW = dict(h=(20, 40), s_min=120, v_min=150)         # croix
 
 
-def find_radar(frame):
-    """Trouve le rectangle du radar (x, y, w, h) dans l'image entière, ou None."""
+def find_radar(frame, full=False):
+    """Trouve le rectangle du radar (x, y, w, h) dans l'image, ou None.
+    Par défaut on cherche en haut à droite (enregistrement d'écran) ; full=True cherche dans toute l'image
+    (vidéo qui ne montrerait que le radar)."""
     H, Wd = frame.shape[:2]
-    x0, y1 = int(Wd * 0.5), int(H * 0.45)
+    x0, y1 = (0, H) if full else (int(Wd * 0.5), int(H * 0.45))
     reg = frame[0:y1, x0:]
     hsv = cv2.cvtColor(reg, cv2.COLOR_BGR2HSV)
     h, s, v = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
@@ -117,7 +119,7 @@ def read_video(path, fps=5.0, progress=None):
             if not ok:
                 break
             if box is None or i % (every * 50) == 0:     # on revérifie la place du radar de temps en temps
-                b = find_radar(fr)
+                b = find_radar(fr) or (find_radar(fr, full=True) if fr.shape[1] < 1000 else None)
                 box = b or box
             if box is not None:
                 d = read_frame(fr, box)
