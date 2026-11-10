@@ -16,6 +16,7 @@ Outil de codage de match en direct pour un entraîneur de football (Chambéry Sa
 - Règles de saisie et de calcul : voir README.md et le récap du projet Claude « Application de code pour match de football ».
 
 ## IA vidéo (dossier ia/) — règles
+- **Avancement et prochaine étape : `ia/ETAT.md`** (à lire en premier, à tenir à jour).
 - L'IA ne détecte QUE ce que le coach code à la main : passes réussies / ratées, passes et conduites de déséquilibre, duels gagnés (Z) / perdus (E), frappes (CPA plus tard). Aucune nouvelle donnée (blocs, largeur, possession affichée…) sans demande du coach.
 - Toute modification de `ia/jeu.py` ou `ia/radar.py` : mesurer AVANT et APRÈS avec `python3 ia/noter.py` sur le jeu de référence, et donner les deux notes au coach. Une modification qui baisse la note n'est pas gardée sans son accord.
 - Jeu de référence = séquences codées par le coach (`radar_brut.json` + `codage.json` + `ref.json`), rangées HORS du dépôt public (dépôt privé de données ou dossier `ia/references/`, ignoré par git). Jamais de vidéo, de capture de match ni de données de joueurs (mineurs) dans ce dépôt public.

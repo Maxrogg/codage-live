@@ -1,17 +1,17 @@
 # Graph Report - codage-live  (2026-11-10)
 
 ## Corpus Check
-- 46 files · ~35,151 words
+- 47 files · ~35,486 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .bat 3, .css 1)
 
 ## Summary
-- 385 nodes · 681 edges · 26 communities (19 shown, 7 thin omitted)
+- 391 nodes · 686 edges · 27 communities (20 shown, 7 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `95f1ed60`
+- Built from commit: `934465e9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -37,18 +37,19 @@
 - sw.js
 - tests/README.md
 - Codage live — consignes pour tout assistant de code (Claude, Aider, OpenCode, Continue…)
+- IA vidéo — où on en est (passage de claude.ai à Claude Code, 10 nov. 2026)
 
 ## God Nodes (most connected - your core abstractions)
-1. `main()` - 15 edges
-2. `init()` - 15 edges
+1. `init()` - 15 edges
+2. `main()` - 15 edges
 3. `summary()` - 14 edges
 4. `initButtons()` - 13 edges
 5. `actions()` - 13 edges
 6. `teamInsights()` - 12 edges
 7. `init()` - 10 edges
-8. `run_ref()` - 9 edges
-9. `Analyse automatique des vidéos Veo` - 9 edges
-10. `refresh()` - 9 edges
+8. `refresh()` - 9 edges
+9. `run_ref()` - 9 edges
+10. `drawEvent()` - 9 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `main()` --calls--> `actions()`  [EXTRACTED]
@@ -57,15 +58,15 @@
   ia/analyser.py → ia/jeu.py
 - `main()` --calls--> `normalize()`  [EXTRACTED]
   ia/analyser.py → ia/jeu.py
+- `main()` --calls--> `summary()`  [EXTRACTED]
+  ia/analyser.py → ia/jeu.py
 - `main()` --calls--> `read_video()`  [EXTRACTED]
   ia/analyser.py → ia/radar.py
-- `run_ref()` --calls--> `actions()`  [EXTRACTED]
-  ia/noter.py → ia/jeu.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (26 total, 7 thin omitted)
+## Communities (27 total, 7 thin omitted)
 
 ### Community 0 - "t3.js"
 Cohesion: 0.05
@@ -77,11 +78,11 @@ Nodes (33): avg(), badge(), bilanText(), buildPanels(), copy(), describe(), el()
 
 ### Community 2 - "analyser.py"
 Cohesion: 0.09
-Nodes (17): app_match(), ask(), _draw(), main(), _pitch(), rapport(), load(), main() (+9 more)
+Nodes (16): app_match(), ask(), _draw(), main(), _pitch(), rapport(), load(), main() (+8 more)
 
 ### Community 3 - "jeu.py"
-Cohesion: 0.11
-Nodes (12): actions(), attack_right(), eliminated(), fix_keepers(), _fwd(), goal_side(), holder(), in_box() (+4 more)
+Cohesion: 0.10
+Nodes (13): actions(), attack_right(), eliminated(), fix_keepers(), _fwd(), goal_side(), holder(), in_box() (+5 more)
 
 ### Community 4 - "stats.js"
 Cohesion: 0.15
@@ -143,6 +144,10 @@ Nodes (3): bars(), esc(), momentum()
 Cohesion: 0.29
 Nodes (6): Carte du code (Graphify), Codage live — consignes pour tout assistant de code (Claude, Aider, OpenCode, Continue…), IA vidéo (dossier ia/) — règles, Outils et tests (dans ce dépôt), Règles, Structure (aucune compilation, scripts simples sur l'espace de noms global `FC`)
 
+### Community 26 - "IA vidéo — où on en est (passage de claude.ai à Claude Code, 10 nov. 2026)"
+Cohesion: 0.33
+Nodes (5): Fait, IA vidéo — où on en est (passage de claude.ai à Claude Code, 10 nov. 2026), Prochaines étapes (dans l'ordre), Rappels, Seule séquence testée
+
 ## Knowledge Gaps
 - **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -150,7 +155,7 @@ Nodes (6): Carte du code (Graphify), Codage live — consignes pour tout assista
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `main()` connect `analyser.py` to `jeu.py`, `test_ia.py`?**
-  _High betweenness centrality (0.012) - this node is a cross-community bridge._
+  _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `init()` (e.g. with `describe()` and `flash()`) actually correct?**
   _`init()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `t3.js` be split into smaller, more focused modules?**
@@ -158,8 +163,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `actions()` connect `jeu.py` to `analyser.py`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
 - **Should `analyser.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.08502415458937199 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09413067552602436 - nodes in this community are weakly interconnected._
 - **Why does `run_ref()` connect `analyser.py` to `jeu.py`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **Should `jeu.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.11375661375661375 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0989247311827957 - nodes in this community are weakly interconnected._

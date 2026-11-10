@@ -1,5 +1,5 @@
-/* Service worker : met tous les fichiers en cache pour fonctionner hors ligne. Version e83d8090ae. */
-const V = 'codage-live-e83d8090ae';
+/* Service worker : met tous les fichiers en cache pour fonctionner hors ligne. Version 69ed621d2b. */
+const V = 'codage-live-69ed621d2b';
 const FILES = ["./", "AGENTS.md", "css/style.css", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "index.html", "js/backup.js", "js/chart.js", "js/clock.js", "js/config.js", "js/events.js", "js/input.js", "js/momentum.js", "js/pitch.js", "js/pwa.js", "js/stats.js", "js/sync.js", "js/ui.js", "js/video.js", "js/viz.js", "manifest.webmanifest"];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(V).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {
