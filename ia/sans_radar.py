@@ -153,6 +153,71 @@ def to_brut(t, players, balls, G):
     return dict(t=round(t, 2), jaune=pos['jaune'], noir=pos['noir'], ballon=ball)
 
 
+# Nettoyage des positions « vision » avant jeu.py (qui suppose un ballon propre, comme celui du radar Veo).
+CLEAN = dict(
+    vmax=30.0,       # m/s : vitesse maximale du ballon (frappe) ; au-delà, c'est un faux ballon
+    tol=3.0,         # m : marge ajoutée (erreur de position)
+    reacq=3,         # images : après autant de rejets cohérents entre eux, on reprend le nouveau ballon
+    gap=1.0,         # s : trous du ballon comblés jusqu'à ça
+    smooth=0,        # lissage 1-2-1 du ballon (1 = oui) : testé, moins bon (passes réussies 46 au lieu de 57)
+    margin=1.0,      # m : hors du terrain au-delà → spectateur, banc
+    per_team=11,     # joueurs par équipe au plus
+)
+
+
+def clean_brut(frames, cfg=None):
+    """Ballon : rejette les sauts impossibles, comble les petits trous, lisse. Joueurs : hors terrain écartés,
+    11 par équipe au plus (on enlève les plus proches du bord). Renvoie une nouvelle liste."""
+    import math
+    c = dict(CLEAN, **(cfg or {}))
+    out = [dict(f) for f in frames]
+    # joueurs
+    for f in out:
+        for team in ('jaune', 'noir'):
+            pts = [p for p in f.get(team, []) if -c['margin'] <= p[0] <= 105 + c['margin'] and -c['margin'] <= p[1] <= 68 + c['margin']]
+            if len(pts) > c['per_team']:
+                pts.sort(key=lambda p: -min(p[0], 105 - p[0], p[1], 68 - p[1]))
+                pts = pts[:c['per_team']]
+            f[team] = pts
+    # ballon : rejet des sauts
+    last, pend = None, []                                    # pend = [(image, ballon rejeté)]
+    for i, f in enumerate(out):
+        b = f.get('ballon')
+        if b is None:
+            continue
+        if last is None or math.dist(b, out[last]['ballon']) <= c['vmax'] * (f['t'] - out[last]['t']) + c['tol']:
+            last, pend = i, []
+            continue
+        pend.append((i, b))
+        f['ballon'] = None
+        if len(pend) >= c['reacq'] and all(
+                math.dist(pa, pb) <= c['vmax'] * (out[ib]['t'] - out[ia]['t']) + c['tol']
+                for (ia, pa), (ib, pb) in zip(pend, pend[1:])):
+            for j, pb in pend:                               # le ballon est vraiment là-bas : on le reprend
+                out[j]['ballon'] = pb
+            last, pend = i, []
+    # petits trous comblés
+    known = [i for i, f in enumerate(out) if f.get('ballon')]
+    for a, b in zip(known, known[1:]):
+        ta, tb = out[a]['t'], out[b]['t']
+        if b - a > 1 and tb - ta <= c['gap']:
+            (xa, ya), (xb, yb) = out[a]['ballon'], out[b]['ballon']
+            for i in range(a + 1, b):
+                r = (out[i]['t'] - ta) / (tb - ta)
+                out[i]['ballon'] = (xa + r * (xb - xa), ya + r * (yb - ya))
+    # lissage 1-2-1 (seulement entre images où le ballon est vu)
+    if c['smooth']:
+        raw = [f.get('ballon') for f in out]
+        for i in range(1, len(out) - 1):
+            a, b, d = raw[i - 1], raw[i], raw[i + 1]
+            if a and b and d:
+                out[i]['ballon'] = ((a[0] + 2 * b[0] + d[0]) / 4, (a[1] + 2 * b[1] + d[1]) / 4)
+    for f in out:
+        if f.get('ballon'):
+            f['ballon'] = (round(f['ballon'][0], 2), round(f['ballon'][1], 2))
+    return out
+
+
 def calibrate_on_radar(players, balls, radar_frame, iters=150000, seed=0):
     """Calage G sur une image À L'AIDE DU RADAR (pour mesurer, pas pour le live) : RANSAC sur des
     correspondances joueur ↔ marque radar de la même équipe, ancré sur le ballon quand il est vu."""

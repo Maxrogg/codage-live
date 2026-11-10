@@ -220,6 +220,13 @@ Hab = trk.homography(trk.features(a_, []), trk.features(b_, []))
 dx = sans_radar.project(Hab, [(480, 270)])[0][0] - 480 if Hab is not None else 99
 ok(Hab is not None and abs(dx + 40) < 2, 'sans radar : mouvement de caméra retrouvé par le décor (%.1f px pour -40)' % dx)
 
+# --- sans radar : nettoyage (faux ballon, spectateur, plus de 11 joueurs) ---
+fv = [dict(t=i * 0.2, jaune=[(30 + i, 20)] + ([(50, -6)] if i == 2 else []), noir=[(60, 30)] * (13 if i == 0 else 1),
+           ballon=(30 + i, 20) if i != 3 else (95, 60)) for i in range(8)]
+cv = sans_radar.clean_brut(fv)
+ok(cv[3]['ballon'] != (95, 60) and cv[3]['ballon'] is not None, 'sans radar : faux ballon (saut de 65 m) rejeté et comblé : %s' % (cv[3]['ballon'],))
+ok(len(cv[2]['jaune']) == 1 and len(cv[0]['noir']) == 11, 'sans radar : spectateur hors terrain écarté, 11 joueurs max par équipe')
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)
