@@ -302,7 +302,9 @@ for i in range(60):
     else:
         f = _feat(180, 128 - 45, 128 + 50); t = 'arbitre'
     frs[i % 5]['players'].append(dict(team='?', feat=f)); vrai.append((frs[i % 5]['players'][-1], t))
-info = equipes.assigner(frs, nous='jaune')
+# fusion ombre / soleil (proche=25) : par défaut proche=0, car sur off_placee la fusion a fait des erreurs
+# (journal ETAT.md, 17 nov.) ; limite connue : sans fusion, jaunes à l'ombre et au soleil peuvent être séparés.
+info = equipes.assigner(frs, nous='jaune', proche=25.0)
 bons = sum(p['team'] == t for p, t in vrai if t != 'arbitre')
 ok(info['ok'] and bons == 55, 'équipes : jaunes soleil + ombre et bleu marine bien séparés (%d / 55)' % bons)
 ok(sans_radar.plausible(np.eye(3)) and not sans_radar.plausible(np.diag([20, 20, 1.0]))
