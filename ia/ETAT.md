@@ -17,6 +17,8 @@
 - Notes : avant (ancien radar.py) = 0, radar introuvable → après = **44 / 100** (passes réussies 77, déséquilibres 100, passes ratées 0, frappe 0 : la frappe codée tombe à la fin de l'enregistrement).
 - Remarque : dans ce codage, les coordonnées semblent en vue caméra (frappe à x = 3) : « ⇄ Sens » pas utilisé. Sans effet sur la note (appariement par temps et type).
 
+## Feuille de route vers une IA autonome : voir `PISTES.md` (17 nov. 2026)
+
 ## Prochaines étapes (dans l'ordre)
 1. Le coach valide la branche ia/radar-jaune-noir (puis fusion + push ; les tests `tests/` demandent Node, pas encore installé sur ce PC).
 2. Référence plus longue : 5 à 10 min (≥ 50 actions) enregistrées avec le radar AGRANDI + codées → réglage de `CFG` en suivant la note (avant / après, voir CLAUDE.md).
