@@ -45,7 +45,7 @@ REF = os.path.join(HERE, 'references')
 MASQUE_TOUS = 5              # un masque de lignes toutes les 5 images analysées
 # (mesure, sens : +1 plus haut = mieux / -1 plus bas = mieux / 0 information, écart toléré avant « BAISSE »)
 MESURES = [
-    ('reliees', +1, 0.02), ('lignes', +1, 0.02), ('jaune', 0, 0), ('noir', 0, 0), ('trop_11', -1, 0.03),
+    ('reliees', +1, 0.02), ('lignes', +1, 0.02), ('dans_terrain', +1, 0.03), ('jaune', 0, 0), ('noir', 0, 0), ('trop_11', -1, 0.03),
     ('ballon_vu', +1, 0.03), ('ballon_sauts', -1, 0.02), ('err_joueurs_m', -1, 0.05), ('err_ballon_m', -1, 0.2),
     ('equipes_ok', +1, 0.03), ('note', +1, 5), ('s_image', -1, 0.3),
 ]
@@ -134,6 +134,14 @@ def mesurer(seq, cache, masques, G, dims, radar):
     rec = [ac.recouvrement(G @ np.array(fr[i]['H']), b, z, L)[0] for i, (b, z) in masques.items() if fr[i]['H'] is not None]
     rec = [r for r in rec if r is not None]
     res['lignes'] = float(np.mean(rec)) if rec else None
+    # garde-fou : pieds des joueurs dans le terrain (un faux calage peut tromper la mesure des lignes)
+    n = ok = 0
+    for f in rel:
+        if f['players']:
+            q = sr.project(G @ np.array(f['H']), [p['foot'] for p in f['players']])
+            n += len(q)
+            ok += int(((q[:, 0] > -2) & (q[:, 0] < 107) & (q[:, 1] > -2) & (q[:, 1] < 70)).sum())
+    res['dans_terrain'] = ok / n if n else None
     # positions en mètres (format radar_brut) + ballon cohérent
     cands = [sr.ball_candidates(f['balls'], G @ np.array(f['H'])) for f in rel]
     path = sr.ball_path(cands, [f['t'] for f in rel])

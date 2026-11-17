@@ -19,6 +19,33 @@
 
 ## Feuille de route vers une IA autonome : voir `PISTES.md` (17 nov. 2026)
 
+## Journal de bord (17 nov., travail en autonomie) : hypothèse → mesure → décision
+Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + codage ; cascol_10 / _30 / _100 =
+2 min du match complet vs Cascol à la 10e, 30e et 100e minute, sans vérité). Historique : references/banc_historique.csv.
+- Carte graphique : torch 2.11 + cu128 installé depuis les fichiers téléchargés. YOLO yolo11s / 2880 : 0,55 → 5,9 images/s
+  (FP16). Le décor (ORB 3000 points, pleine image) devient le goulot : 1,1 image/s → à alléger pour le live.
+- Mesures sans vérité (`autocontrole.py`) : lignes blanches seules (lignes bleues du foot à 8 écartées, pelouse = grande zone
+  verte reliée au bas de l'image). Vérifié : un calage décalé fait baisser la mesure ; MAIS lignes parallèles → faux maximums
+  (décaler de 4 m peut redonner presque la même note). Bon pour noter un calage, pas suffisant seul pour le chercher.
+- Point de départ (calage radar) : off_placee lignes 0,32, joueurs 0,51 m, équipes justes 98 %, note 26 ; Cascol lignes
+  0,19 / 0,31 / 0,10, ballon vu 60 / 78 / 49 %. Lignes basses = le calage radar est faux loin des joueurs (vu sur les images).
+- 50e minute du match = mi-temps (joueurs regroupés) → séquence remplacée par la 30e minute.
+- Liens du décor faux mais acceptés (lignes dessinées n'importe où sur une image) → contrôle de vraisemblance
+  (`sans_radar.plausible` : quadrilatère convexe, zoom entre 1/4 et 4) + 30 points d'accord au lieu de 15. Mesures inchangées
+  ailleurs (pas de perte).
+- Équipes par regroupement des maillots (`equipes.py`, sans couleur écrite en dur) : 1re règle (« les 2 plus gros groupes »)
+  86 % justes, note 20 → mauvaise (le plus gros groupe mélangeait spectateurs / gens hors terrain). 2e règle (« Nous » = groupe
+  le plus proche de la couleur annoncée, adversaire = plus gros des autres, 4 groupes) : 97,7 % justes = couleurs fixes
+  (97,6 %) MAIS moins de jaunes trouvés (médiane 5 au lieu de 8 : soleil et ombre dans 2 groupes), note 21 au lieu de 26.
+  Fusionner les groupes proches ajoute des joueurs mais fait des erreurs (94-96 %). DÉCISION : couleurs fixes par défaut pour
+  le club, regroupement en option (`banc.py --equipes auto`) pour des maillots inconnus. À reprendre : fusion ombre / soleil
+  par la teinte seule.
+- Ballon, modèle plus gros (yolo11m) : vu 81 → 76 %, sauts 6 → 10 %, erreur 1,37 → 1,23 m, note 26 → 25 → pas mieux,
+  yolo11s gardé. Ré-entraîner YOLO avec le radar comme professeur : pas fait, 165 images d'UNE séquence = apprentissage
+  par cœur et pas de mesure honnête. Il faut d'abord d'autres enregistrements radar (autres matchs).
+- Note des actions depuis un codage SANS radar (banc : clé "codage" d'une séquence) : vérifié sur off_placee, même note (26)
+  qu'avec le radar. Prêt pour le codage du match Cascol par le coach.
+
 ## Prochaines étapes (dans l'ordre)
 1. Le coach valide la branche ia/radar-jaune-noir (puis fusion + push ; les tests `tests/` demandent Node, pas encore installé sur ce PC).
 2. Référence plus longue : 5 à 10 min (≥ 50 actions) enregistrées avec le radar AGRANDI + codées → réglage de `CFG` en suivant la note (avant / après, voir CLAUDE.md).

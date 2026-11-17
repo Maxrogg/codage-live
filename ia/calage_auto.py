@@ -67,7 +67,8 @@ def modele(L, W, pas=1.0):
 
 # ------------------------------------------------------------------ vues (masques des lignes + lien au décor)
 class Vue:
-    def __init__(self, H, blanc, zone):
+    def __init__(self, H, blanc, zone, pieds=()):
+        self.pieds = np.array(pieds, float).reshape(-1, 2)  # pieds des joueurs détectés (pixels pleine image)
         self.H = np.array(H)                              # cette image → image de référence
         self.Hinv = np.linalg.inv(self.H)
         self.blanc, self.zone = blanc, zone
@@ -88,8 +89,9 @@ def charger_vues(seqs):
         c = json.load(open(os.path.join(banc.REF, 'banc_cache', s + '.json'), encoding='utf-8'))
         m = banc.charger_masques(np.load(os.path.join(banc.REF, 'banc_cache', s + '_lignes.npz')))
         for i, (b, z) in m.items():
-            if c['frames'][i]['H'] is not None and b.sum() > 200:
-                vues.append(Vue(c['frames'][i]['H'], b, z))
+            f = c['frames'][i]
+            if f['H'] is not None and b.sum() > 200:
+                vues.append(Vue(f['H'], b, z, [p['foot'] for p in f['players']]))
     return vues
 
 
@@ -103,7 +105,7 @@ def projeter(Hw, vue, pts):
     return q, ok
 
 
-def score(Hw, vues, pts, sigma, segs=None):
+def score(Hw, vues, pts, sigma, L_W=None):
     """F1 entre lignes du modèle et blanc vu. Rappel : points du modèle (dans la pelouse) proches du blanc ;
     précision : pixels blancs (de la pelouse) proches d'une ligne du modèle dessinée."""
     rec_s = rec_n = pre_s = pre_n = 0.0
@@ -128,13 +130,29 @@ def score(Hw, vues, pts, sigma, segs=None):
     if rec_n < 200:
         return 0.0
     r, p = rec_s / rec_n, pre_s / max(pre_n, 1)
-    return 2 * r * p / (r + p + 1e-9)
+    return 2 * r * p / (r + p + 1e-9) * dans_terrain(Hw, vues, L_W) ** 2 if L_W else 2 * r * p / (r + p + 1e-9)
+
+
+def dans_terrain(Hw, vues, L_W, marge=2.0):
+    """Part des pieds de joueurs qui tombent dans le terrain (garde-fou : un faux calage peut aligner quelques
+    lignes sur la clôture en tassant tout le terrain au fond ; alors les joueurs sont « hors du terrain »)."""
+    L, W = L_W
+    inv = np.linalg.inv(Hw)
+    n = ok = 0
+    for v in vues:
+        if not len(v.pieds):
+            continue
+        q = cv2.perspectiveTransform(v.pieds.reshape(-1, 1, 2), inv @ v.H).reshape(-1, 2)
+        n += len(q)
+        ok += int(((q[:, 0] > -marge) & (q[:, 0] < L + marge) & (q[:, 1] > -marge) & (q[:, 1] < W + marge)).sum())
+    return ok / n if n else 0.0
 
 
 # ------------------------------------------------------------------ 1. recherche large (entropie croisée)
 BORNES = np.array([
     # cx (part de L), d (m), h (m), pan, tilt, roulis (deg), f (px), L (m), W (m)
-    (0.2, 0.8), (-2, 30), (3, 20), (-70, 70), (2, 40), (-6, 6), (500, 4000), (55, 110), (38, 75)], float)
+    (0.2, 0.8), (-2, 15), (4, 15), (-70, 70), (2, 40), (-6, 6), (800, 4000), (55, 110), (38, 75)], float)
+# 17 nov. : bornes larges (h 3-20 m, recul 0-30 m, f ≥ 500) → faux calage (terrain tassé au fond) ; Veo = mât 4-15 m
 
 
 def decode(z):
@@ -155,7 +173,7 @@ def recherche(vues, n0=1500, n=250, iters=12, elite=25, sigma=6.0, seed=0, log=p
         if key not in base:
             base[key] = modele(key[0], key[1], pas=1.5)
         pts = base[key] * [L / max(key[0], 1), W / max(key[1], 1)]
-        return score(homographie(p, L, W), vues, pts, sg)
+        return score(homographie(p, L, W), vues, pts, sg, (L, W))
 
     Z = rng.uniform(lo, hi, (n0, len(lo)))
     sc = np.array([f(z, sigma) for z in Z])
@@ -222,9 +240,10 @@ def calage(vues, log=print, seeds=(0, 1, 2), dims=None, n_vues=16):
         if best is None or sc > best[3]:
             best = (Hw, L, W, sc)
     Hw, L, W, sc = best
-    sc = score(Hw, vues, modele(L, W, 1.5), 2.0)
+    sc = score(Hw, vues, modele(L, W, 1.5), 2.0, (L, W))
     Hw = affiner(Hw, L, W, vues, log=log)
-    sc2 = score(Hw, vues, modele(L, W, 1.5), 2.0)
+    sc2 = score(Hw, vues, modele(L, W, 1.5), 2.0, (L, W))
+    log(' pieds dans le terrain : %.2f' % dans_terrain(Hw, vues, (L, W)))
     G = vers_radar(L, W) @ np.linalg.inv(Hw)          # image de référence → repère radar 105 x 68
     return G, L, W, sc, sc2
 
