@@ -4,3 +4,4 @@ __pycache__/
 resultats_*/
 graphify-out/cache/
 ia/references/
+*.pt

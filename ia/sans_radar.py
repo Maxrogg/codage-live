@@ -70,11 +70,12 @@ def on_grass(turf, x0, y0, x1, y1):
     return band.size > 0 and band.mean() > 0.35
 
 
-def detect(model, frame, imgsz=2880, conf=0.12):
-    """Renvoie (joueurs, ballons) en pixels. joueur = dict(team, box, foot=(x, y) point au sol, conf)."""
+def detect(model, frame, imgsz=2880, conf=0.12, **kw):
+    """Renvoie (joueurs, ballons) en pixels. joueur = dict(team, box, foot=(x, y) point au sol, conf).
+    kw : passé à YOLO (ex. device='0', half=True pour la carte graphique)."""
     turf = turf_mask(frame)
     H, W = frame.shape[:2]
-    r = model.predict(frame, imgsz=imgsz, conf=conf, classes=[0, 32], verbose=False)[0]
+    r = model.predict(frame, imgsz=imgsz, conf=conf, classes=[0, 32], verbose=False, **kw)[0]
     players, balls = [], []
     for b, c, p in zip(r.boxes.xyxy.tolist(), r.boxes.cls.tolist(), r.boxes.conf.tolist()):
         x0, y0, x1, y1 = b
