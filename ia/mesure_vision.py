@@ -134,6 +134,32 @@ def calage_clics(G_vrai, px, frames, seed=0, marge=60):
     return G, len(src)
 
 
+def calage_terrain(path, video, cache):
+    """Calage fait par clics (caler.py, terrain.json) sur la même vidéo, ramené à l'image de référence du cache."""
+    import caler
+    T = json.load(open(path, encoding='utf-8'))
+    pos = {n: (x, y) for n, x, y in caler.reperes(**T['dims'])}
+    cap = cv2.VideoCapture(video)
+    tr = sr.CameraTracker()
+
+    def img(t):
+        cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+        return cap.read()[1]
+
+    f_ref = tr.features(img(cache['frames'][cache['ref']]['t'] - cache['offset']), [])
+    Hs, cl = {}, []
+    for c in T['clics']:
+        if c['t'] not in Hs:
+            Hs[c['t']] = tr.homography(tr.features(img(c['t']), []), f_ref)
+        if Hs[c['t']] is not None:
+            q = sr.project(Hs[c['t']], [c['px']])[0]
+            cl.append((c['nom'], (float(q[0]), float(q[1])), pos[c['nom']]))
+    G, ecarts = caler.calculer(cl)
+    print('\nCalage par clics (%s) : %d repères sur %d utilisables, écarts %s' % (
+        os.path.basename(os.path.dirname(path)), len(cl), len(T['clics']), ' '.join('%.1f' % e for e in ecarts.values())))
+    return G
+
+
 def ball_stats(G, frames, rad):
     cands, times, truth = [], [], []
     for f in frames:
@@ -200,6 +226,7 @@ def main():
     ap.add_argument('--decalage', type=float, default=13.84, help='s : instant du radar où commence la vidéo caméra')
     ap.add_argument('--refaire', action='store_true', help='relancer YOLO + décor (sinon cache)')
     ap.add_argument('--clics', type=float, nargs='*', default=[], help='simule le calage par clics, erreurs en pixels (ex. 3 5 8)')
+    ap.add_argument('--terrain', help='terrain.json fait avec caler.py sur la même vidéo : mesure ce calage-là')
     a = ap.parse_args()
     folder = os.path.join(HERE, 'references', a.ref)
     radar = noter.load_raw(os.path.join(folder, 'radar_brut.json'))
@@ -211,6 +238,12 @@ def main():
     fr = cache['frames']
     print('%d images (référence n° %d, t = %.2f s radar)' % (len(fr), cache['ref'], fr[cache['ref']]['t']))
 
+    if a.terrain:
+        Gt = calage_terrain(a.terrain, a.video, cache)
+        if Gt is None:
+            raise SystemExit('Moins de 4 repères utilisables.')
+        rapport(Gt, cache, rad, folder, 'Calage par CLICS (sans radar)')
+        return
     G0, G = calage_radar(cache, rad)
     rapport(G0, cache, rad, folder, 'Calage sur UNE image (radar)')
     rapport(G, cache, rad, folder, 'Calage commun sur toutes les images (radar)')

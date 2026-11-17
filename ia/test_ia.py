@@ -251,6 +251,17 @@ pth = sans_radar.ball_path(cc, tt)
 bons = sum(1 for p, v in zip(pth, vrai) if p and math.dist(p, v) < 0.5)
 ok(bons >= 18, 'sans radar : chemin cohérent du ballon malgré des leurres plus confiants (%d / 20 justes)' % bons)
 
+# --- sans radar : calage du terrain par clics (caler.py) ---
+import caler  # noqa: E402
+rp = caler.reperes(longueur=90, largeur=55, surface=(13, 32), but=(4, 15))
+ok(abs(rp[0][1] - 52.5) < 1e-9 and abs(rp[0][2] - 34) < 1e-9 and max(x for _, x, _ in rp) <= 105.001,
+   'calage par clics : repères d\'un terrain 90 x 55 ramenés au repère du radar 105 x 68')
+cl = [(n, tuple(sans_radar.project(Gi, [(x, y)])[0] + (0.5 if j == 3 else 0)), (x, y)) for j, (n, x, y) in enumerate(rp[:10])]
+Gk, ec = caler.calculer(cl)
+e = max(math.dist(a, b) for a, b in zip(sans_radar.project(Gk, [p['foot'] for p in smp[0][1]]), sans_radar.project(Gv, [p['foot'] for p in smp[0][1]])))
+ok(e < 0.3 and len(ec) == 10, 'calage par clics : 10 repères retrouvent le calage (écart max %.2f m)' % e)
+ok(caler.calculer(cl[:3])[0] is None, 'calage par clics : moins de 4 repères → pas de calage')
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)
