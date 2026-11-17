@@ -262,6 +262,53 @@ e = max(math.dist(a, b) for a, b in zip(sans_radar.project(Gk, [p['foot'] for p 
 ok(e < 0.3 and len(ec) == 10, 'calage par clics : 10 repères retrouvent le calage (écart max %.2f m)' % e)
 ok(caler.calculer(cl[:3])[0] is None, 'calage par clics : moins de 4 repères → pas de calage')
 
+# --- auto-contrôle (mesures sans vérité) : lignes du terrain dessinées sur une pelouse de synthèse ---
+import autocontrole  # noqa: E402
+img = np.full((1080, 1920, 3), (100, 150, 90), np.uint8)                    # pelouse (BGR)
+Lm = caler.lignes()
+for pl in Lm:
+    q = sans_radar.project(Gi, pl)
+    cv2.polylines(img, [np.int32(q).reshape(-1, 1, 2)], False, (245, 245, 245), 3)
+cv2.line(img, (0, 900), (1900, 700), (140, 40, 20), 3)                       # ligne BLEUE (foot à 8) : à ignorer
+bl, zo = autocontrole.masques(img)
+r_bon, n_bon = autocontrole.recouvrement(Gv, bl, zo, Lm)
+r_mal, _ = autocontrole.recouvrement(np.array([[1, 0, 3], [0, 1, 0], [0, 0, 1.]]) @ Gv, bl, zo, Lm)
+ok(n_bon > 100 and r_bon > 0.9 and r_mal < 0.5,
+   'auto-contrôle : lignes du bon calage sur le blanc (%.2f), calage décalé de 3 m (%.2f)' % (r_bon, r_mal))
+img2 = np.full((1080, 1920, 3), (100, 150, 90), np.uint8)
+cv2.line(img2, (0, 900), (1900, 700), (245, 245, 245), 3)                    # la même, en blanc : vue
+ok(not bl[395:406, 470:481].any() and autocontrole.masques(img2)[0][395:406, 470:481].any(),
+   'auto-contrôle : ligne bleue ignorée, la même en blanc est vue')            # (950, 800) sur la ligne
+vu, sauts = autocontrole.ballon([(10, 10), None, (12, 10), (90, 60)], [0, 0.2, 0.4, 0.6])
+ok(abs(vu - 0.75) < 1e-9 and abs(sauts - 0.5) < 1e-9, 'auto-contrôle : ballon vu 75 %, 1 saut impossible sur 2')
+
+# --- équipes trouvées seules (equipes.py) : jaunes au soleil ET à l'ombre, bleu marine, un arbitre ---
+import equipes  # noqa: E402
+rng = np.random.default_rng(0)
+
+
+def _feat(L, a, b):
+    return [L - 10, a - 3, b - 6, L, a, b, L + 10, a + 3, b + 6]
+
+
+frs = [dict(players=[]) for _ in range(5)]
+vrai = []
+for i in range(60):
+    soleil = i % 2 == 0
+    if i < 25:
+        f = _feat(200 if soleil else 110, 128 + rng.normal(0, 3), 128 + (65 if soleil else 45) + rng.normal(0, 4)); t = 'jaune'
+    elif i < 55:
+        f = _feat(60 if soleil else 35, 128 + rng.normal(0, 3), 128 - 22 + rng.normal(0, 4)); t = 'noir'
+    else:
+        f = _feat(180, 128 - 45, 128 + 50); t = 'arbitre'
+    frs[i % 5]['players'].append(dict(team='?', feat=f)); vrai.append((frs[i % 5]['players'][-1], t))
+info = equipes.assigner(frs, nous='jaune')
+bons = sum(p['team'] == t for p, t in vrai if t != 'arbitre')
+ok(info['ok'] and bons == 55, 'équipes : jaunes soleil + ombre et bleu marine bien séparés (%d / 55)' % bons)
+ok(sans_radar.plausible(np.eye(3)) and not sans_radar.plausible(np.diag([20, 20, 1.0]))
+   and not sans_radar.plausible(np.array([[1, 0, 0], [0, 1, 0], [-0.001, 0, 1.0]])),
+   'décor : liens invraisemblables refusés (zoom × 20, image retournée)')
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)

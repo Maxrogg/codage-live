@@ -86,8 +86,26 @@ def detect(model, frame, imgsz=2880, conf=0.12, **kw):
             continue
         if not on_grass(turf, x0, y0, x1, y1):
             continue
-        players.append(dict(team=team_of(frame, b), box=(x0, y0, x1, y1), foot=((x0 + x1) / 2, y1), conf=p))
+        players.append(dict(team=team_of(frame, b), box=(x0, y0, x1, y1), foot=((x0 + x1) / 2, y1), conf=p,
+                            feat=descripteur(frame, b)))
     return players, balls
+
+
+def descripteur(frame, box):
+    """Empreinte couleur du maillot (pour trouver les équipes par regroupement, equipes.py) : médianes et
+    quartiles L*, a*, b* des pixels du haut du corps qui ne sont pas de la pelouse. None si trop peu de pixels."""
+    x0, y0, x1, y1 = [int(v) for v in box]
+    hh, ww = y1 - y0, x1 - x0
+    torso = frame[max(0, y0 + int(0.12 * hh)):y0 + int(0.5 * hh), max(0, x0 + int(0.2 * ww)):x1 - int(0.2 * ww)]
+    if torso.size < 12:
+        return None
+    hsv = cv2.cvtColor(torso, cv2.COLOR_BGR2HSV).reshape(-1, 3).astype(np.int16)
+    grass = (hsv[:, 0] >= GRASS['h'][0]) & (hsv[:, 0] <= GRASS['h'][1]) & (hsv[:, 1] >= GRASS['s'][0]) & (hsv[:, 1] <= GRASS['s'][1])
+    lab = cv2.cvtColor(torso, cv2.COLOR_BGR2LAB).reshape(-1, 3)[~grass].astype(float)
+    if len(lab) < 6:
+        return None
+    q = np.percentile(lab, [25, 50, 75], axis=0)
+    return [round(float(v), 1) for v in q.ravel()]
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -132,7 +150,24 @@ class CameraTracker:
         pa = np.float32([ka[m.queryIdx].pt for m in ms])
         pb = np.float32([kb[m.trainIdx].pt for m in ms])
         H, inl = cv2.findHomography(pa, pb, cv2.RANSAC, 3.0)
-        return H if H is not None and inl.sum() >= 15 else None
+        if H is None or inl.sum() < self.MIN_INLIERS or not plausible(H):
+            return None
+        return H
+
+    MIN_INLIERS = 30          # 17 nov. : 15 laissait passer de faux liens (lignes du terrain dessinées n'importe où)
+
+
+def plausible(H, w=1920, h=1080):
+    """Un lien image → image de la Veo (rotation + zoom autour d'un point fixe) garde un quadrilatère convexe,
+    devant la caméra, de taille comparable (zoom entre 1/4 et 4)."""
+    c = np.float64([[0, 0, 1], [w, 0, 1], [w, h, 1], [0, h, 1]]) @ np.asarray(H, float).T
+    if not (np.all(c[:, 2] > 0) or np.all(c[:, 2] < 0)):
+        return False
+    q = c[:, :2] / c[:, 2:]
+    if not cv2.isContourConvex(np.float32(q).reshape(-1, 1, 2)):
+        return False
+    r = abs(cv2.contourArea(np.float32(q))) / (w * h)
+    return 1 / 16 < r < 16
 
 
 def match_one_to_one(P, R, tol):
