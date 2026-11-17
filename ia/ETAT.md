@@ -23,7 +23,9 @@
 Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + codage ; cascol_10 / _30 / _100 =
 2 min du match complet vs Cascol à la 10e, 30e et 100e minute, sans vérité). Historique : references/banc_historique.csv.
 - Carte graphique : torch 2.11 + cu128 installé depuis les fichiers téléchargés. YOLO yolo11s / 2880 : 0,55 → 5,9 images/s
-  (FP16). Le décor (ORB 3000 points, pleine image) devient le goulot : 1,1 image/s → à alléger pour le live.
+  (FP16). Décor (ORB 3000 points, pleine image) : 14 images/s mesuré sur 52 images de off_placee (le « 1,1 image/s » de
+  vitesse.py sur 15 images était FAUX, sans doute le démarrage d'OpenCV) → ce n'est pas le goulot. Image réduite de moitié :
+  41 images/s mais 2 images sur 52 non reliées et 0,56 m au lieu de 0,50 → pleine image gardée.
 - Mesures sans vérité (`autocontrole.py`) : lignes blanches seules (lignes bleues du foot à 8 écartées, pelouse = grande zone
   verte reliée au bas de l'image). Vérifié : un calage décalé fait baisser la mesure ; MAIS lignes parallèles → faux maximums
   (décaler de 4 m peut redonner presque la même note). Bon pour noter un calage, pas suffisant seul pour le chercher.
@@ -43,6 +45,18 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
 - Ballon, modèle plus gros (yolo11m) : vu 81 → 76 %, sauts 6 → 10 %, erreur 1,37 → 1,23 m, note 26 → 25 → pas mieux,
   yolo11s gardé. Ré-entraîner YOLO avec le radar comme professeur : pas fait, 165 images d'UNE séquence = apprentissage
   par cœur et pas de mesure honnête. Il faut d'abord d'autres enregistrements radar (autres matchs).
+- CALAGE AUTOMATIQUE (`calage_auto.py` : caméra physique + dimensions, recherche par entropie croisée sur 16 vues, puis
+  affinage ICP sur 174 vues, ~13 min) : ÉCHEC pour l'instant, NE PAS UTILISER.
+  * Essai 1 : mesure « lignes » 0,87 (!) mais terrain entier tassé dans la bande du fond (clôture, buts) : erreur 2,0 m,
+    équipes 13 %, note 0. LEÇON : la mesure des lignes seule se laisse tromper → garde-fou ajouté au banc et au calage :
+    « dans_terrain » = part des pieds de joueurs qui tombent dans le terrain (calage radar 0,61-0,97 ; faux calage 0,37).
+  * Essai 2 (garde-fou + caméra réaliste : mât 4-15 m, recul ≤ 15 m) : pieds dans le terrain 0,92-0,99, lignes 0,45, mais
+    lignes dessinées visiblement fausses, erreur 2,1 m, équipes 52 % (hasard), hauteur collée à la borne (4 m) → le modèle
+    ne trouve pas. Causes probables : départ au hasard dans un espace trop grand, masque des lignes bruité au fond (clôture,
+    buts), terrain symétrique. Pistes : partir de la structure (points de fuite des lignes, ou modèle de points-clés
+    pré-entraîné), ou d'un calage approché (clics).
+  * DÉCISION : pour le terrain du club, calage par clics (`caler.py`, ~10 repères, simulé à 0,6 m) = le chemin sûr ;
+    le calage sans aide reste une piste de recherche.
 - Note des actions depuis un codage SANS radar (banc : clé "codage" d'une séquence) : vérifié sur off_placee, même note (26)
   qu'avec le radar. Prêt pour le codage du match Cascol par le coach.
 
