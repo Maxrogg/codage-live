@@ -9,7 +9,8 @@ references/banc.json (HORS dépôt, chemins des vidéos du club) :
      "sequences": [
         {"nom": "off_placee", "video": "C:/.../test.mp4", "debut": 0, "duree": 32, "fps": 5, "terrain": "club",
          "radar": "off_placee", "decalage": 13.84},                 radar + codage : mesures avec vérité
-        {"nom": "cascol_10", "video": "C:/.../vs-cascol.mp4", "debut": 600, "duree": 120, "fps": 2, "terrain": "club"}]}
+        {"nom": "cascol_10", "video": "C:/.../vs-cascol.mp4", "debut": 600, "duree": 120, "fps": 2, "terrain": "club",
+         "codage": "references/cascol/codage.json", "mi_temps": 1}]}    codage du coach (facultatif) : note des actions
 
 Pour chaque séquence : détection + décor (mis en cache dans references/banc_cache/, refait si le code de détection
 change), puis
@@ -157,7 +158,29 @@ def mesurer(seq, cache, masques, G, dims, radar):
         if os.path.exists(os.path.join(dossier, 'codage.json')):
             brut_r = [dict(b, t=round(b['t'] + dec, 2)) for b in brut]
             res['note'] = mv.note_vision(dossier, brut_r)[0]
+    elif seq.get('codage'):
+        res['note'] = note_codage(seq, brut)
     return res
+
+
+def note_codage(seq, brut):
+    """Note des actions SANS radar : codage du coach (export « actions + vidéo » de l'onglet Vidéo, calé sur CETTE
+    vidéo, temps en secondes de la vidéo) contre les actions tirées des positions vision. Le sens d'attaque est
+    trouvé seul (jeu.attack_right)."""
+    import shutil
+    import tempfile
+    tmp = tempfile.mkdtemp()
+    try:
+        d = os.path.join(tmp, 'seq')
+        os.makedirs(d)
+        shutil.copy(seq['codage'] if os.path.isabs(seq['codage']) else os.path.join(HERE, seq['codage']),
+                    os.path.join(d, 'codage.json'))
+        json.dump(dict(nous=seq.get('nous', 'jaune'), sens='auto', mi_temps=seq.get('mi_temps', 1)),
+                  open(os.path.join(d, 'ref.json'), 'w', encoding='utf-8'))
+        json.dump(brut, open(os.path.join(d, 'radar_brut.json'), 'w', encoding='utf-8'))
+        return noter.note(tmp, history=False, quiet=True)[0]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def equipes_justes(G, frames, rad, tol=2.0):
@@ -221,6 +244,8 @@ def main():
     ap.add_argument('--refaire', action='store_true')
     ap.add_argument('--equipes', choices=['auto', 'couleurs'], default='couleurs',
                     help='auto = regroupement des maillots (equipes.py) ; couleurs = anciennes couleurs écrites en dur')
+    ap.add_argument('--modele', default='yolo11s.pt', help='modèle YOLO (ex. yolo11m.pt)')
+    ap.add_argument('--taille', type=int, default=2880, help='résolution donnée à YOLO')
     ap.add_argument('--terrain', help='autre dossier de terrain pour toutes les séquences (ex. references/terrain_club_auto)')
     a = ap.parse_args()
     cfg = json.load(open(a.config, encoding='utf-8'))
@@ -234,13 +259,16 @@ def main():
             T = json.load(open(os.path.join(a.terrain if os.path.isabs(a.terrain) else os.path.join(HERE, a.terrain),
                                             'terrain.json'), encoding='utf-8'))
         radar = noter.load_raw(os.path.join(REF, seq['radar'], 'radar_brut.json')) if seq.get('radar') else None
-        cp = os.path.join(REF, 'banc_cache', seq['nom'] + '.json')
-        mp = os.path.join(REF, 'banc_cache', seq['nom'] + '_lignes.npz')
+        suf = '' if (a.modele, a.taille) == ('yolo11s.pt', 2880) else '_%s_%d' % (a.modele.replace('.pt', ''), a.taille)
+        cp = os.path.join(REF, 'banc_cache', seq['nom'] + suf + '.json')
+        mp = os.path.join(REF, 'banc_cache', seq['nom'] + suf + '_lignes.npz')
         cache = json.load(open(cp, encoding='utf-8')) if os.path.exists(cp) else None
         cle = {k: seq[k] for k in ('video', 'debut', 'duree', 'fps')}
         cle['terrain'] = seq['terrain']
-        if a.refaire or cache is None or cache.get('version') != version_detection() or cache.get('cle') != cle:
-            cache, masques = construire(seq, ref_img, temps(seq, radar))
+        perime = (cache is None or cache.get('version') != version_detection() or cache.get('cle') != cle
+                  or (cache.get('model'), cache.get('imgsz')) != (a.modele, a.taille))
+        if a.refaire or perime:
+            cache, masques = construire(seq, ref_img, temps(seq, radar), imgsz=a.taille, model_name=a.modele)
             cache['cle'] = cle
             json.dump(cache, open(cp, 'w', encoding='utf-8'))
             np.savez_compressed(mp, **masques)
@@ -251,7 +279,8 @@ def main():
             print('  %s équipes : %s' % (seq['nom'], info))
         res = mesurer(seq, cache, masques, np.array(T['G']), T.get('dims', {}), radar)
         res.update(date=time.strftime('%Y-%m-%d %H:%M'), version=version_git(), sequence=seq['nom'],
-                   reglages='equipes=%s terrain=%s' % (a.equipes, os.path.basename(a.terrain or seq['terrain'])))
+                   reglages='equipes=%s terrain=%s modele=%s/%d' % (a.equipes, os.path.basename(a.terrain or seq['terrain']),
+                                                                     a.modele, a.taille))
         rows.append(res)
     old = historique(rows)
     print('\n%-12s' % 'séquence' + ''.join('%14s' % m for m, _, _ in MESURES))
