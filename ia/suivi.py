@@ -87,7 +87,7 @@ def detecter(video, debut, fin, fps, sortie, terrain='references/terrain_club', 
             fe = tr.features(fr, [p['box'] for p in P])
             H = relier(tr, fe, refs)
             if H is None and prev is not None:
-                Hp = tr.homography(fe, prev[0])
+                Hp, _ = lien(tr, fe, prev[0])
                 H = prev[1] @ Hp if Hp is not None else None
             if H is not None:
                 prev = (fe, H)
@@ -136,21 +136,72 @@ def references(tr, T, ref_img, terrain):
     return refs
 
 
+_GPU = {}
+
+
+def _bits(d):
+    """Descripteurs ORB (n x 32 octets) → tenseur 0/1 (n x 256) sur la carte graphique (gardé en cache)."""
+    import torch
+    key = id(d)
+    if key in _GPU and _GPU[key][0] is d:
+        return _GPU[key][1]
+    t = torch.from_numpy(np.unpackbits(d, axis=1)).to('cuda', torch.float16)
+    if len(_GPU) > 64:
+        _GPU.clear()
+    _GPU[key] = (d, t)
+    return t
+
+
+def appariements(da, db):
+    """Comme cv2.BFMatcher(NORM_HAMMING, crossCheck=True).match, mais sur la carte graphique (même résultat) :
+    distance de Hamming = |a| + |b| − 2 a·b ; on garde les paires plus proches voisines dans les deux sens.
+    19 nov. 2026 : la comparaison sur le processeur coûtait 0,26 s / image (plus que YOLO)."""
+    import torch
+    A, B = _bits(da), _bits(db)
+    D = A.sum(1, keepdim=True) + B.sum(1)[None, :] - 2 * (A @ B.T)
+    j = D.argmin(1)
+    i = D.argmin(0)
+    ar = torch.arange(len(j), device=D.device)
+    ok = i[j] == ar
+    q, t = ar[ok].cpu().numpy(), j[ok].cpu().numpy()
+    d = D[ar[ok], j[ok]].float().cpu().numpy()
+    return q, t, d
+
+
 def lien(tr, fa, fb):
-    """Comme CameraTracker.homography (mêmes garde-fous), mais renvoie aussi le nombre de points d'accord."""
+    """Comme CameraTracker.homography (mêmes garde-fous), mais renvoie aussi le nombre de points d'accord ; comparaison
+    des descripteurs sur la carte graphique si elle est là."""
     import cv2
     (ka, da), (kb, db) = fa, fb
     if da is None or db is None:
         return None, 0
-    ms = sorted(tr.bf.match(da, db), key=lambda m: m.distance)[:800]
-    if len(ms) < 20:
-        return None, 0
-    pa = np.float32([ka[m.queryIdx].pt for m in ms])
-    pb = np.float32([kb[m.trainIdx].pt for m in ms])
+    if _cuda():
+        q, t, d = appariements(da, db)
+        o = np.argsort(d, kind='stable')[:800]
+        if len(o) < 20:
+            return None, 0
+        pa = np.float32([ka[k].pt for k in q[o]])
+        pb = np.float32([kb[k].pt for k in t[o]])
+    else:
+        ms = sorted(tr.bf.match(da, db), key=lambda m: m.distance)[:800]
+        if len(ms) < 20:
+            return None, 0
+        pa = np.float32([ka[m.queryIdx].pt for m in ms])
+        pb = np.float32([kb[m.trainIdx].pt for m in ms])
     H, inl = cv2.findHomography(pa, pb, cv2.RANSAC, 3.0)
     if H is None or inl.sum() < tr.MIN_INLIERS or not sr.plausible(H):
         return None, 0
     return H, int(inl.sum())
+
+
+def _cuda():
+    if 'cuda' not in _GPU:
+        try:
+            import torch
+            _GPU['cuda'] = torch.cuda.is_available()
+        except ImportError:
+            _GPU['cuda'] = False
+    return _GPU['cuda']
 
 
 def relier(tr, fe, refs, assez=120):
