@@ -112,6 +112,18 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
   la précision et la part de ballon vu).
 - Gardé : ballon lissé (Savitzky-Golay 1 s) dans vision_brut et le suivi. off_placee : note 26 → 39 (sans suivi), 52 → 43
   (avec suivi) = bruit sur 10 actions ; Cascol : passes 382 → 290 à ballon vu égal. À trancher avec le codage du coach.
+- DIAGNOSTIC (off_placee, sources croisées) : joueurs vidéo + ballon RADAR → 6 passes proposées pour 7 (comme le radar) ;
+  joueurs radar + ballon VIDÉO → 9 → c'est LE BALLON qui crée les fausses passes, pas les joueurs.
+- Erreurs du ballon vidéo (off_placee, 151 images) : juste 88 ; faux 36 dont 32 où YOLO n'a PAS vu le vrai ballon (le chemin
+  prend alors un leurre de confiance ~0,23 ; vrais ballons ~0,67) ; non vu 27.
+- Essai « faux ballons fixes » (cases vues > 90 s : point central, points de penalty, objets côté bancs ; 65 cases sur
+  Cascol) : PIRE (passes 290 → 335, précision Eux 54 → 48 %) — un leurre immobile ne crée pas de passe, l'écarter fait sauter
+  le chemin vers d'autres leurres → abandonné.
+- Essai rayon de repli de jeu.actions (8 m → 0) : passes 290 → 246, précision inchangée (65 / 53 %) → pas touché.
+- CONCLUSION : seule une meilleure DÉTECTION du ballon fera progresser (YOLO entraîné sur nos images) ; il faut une vérité
+  pour le mesurer (codage du coach, radar Veo).
+- Vitesse : bousculade processeur entre PyTorch (YOLO) et OpenCV (décor) → comparaison du décor sur la carte graphique
+  (résultat identique au pixel) : ~0,6 → 0,35 s / image.
 - Banc : séquences Cascol sur `terrain_cascol` (calage par vue). Lignes 0,19 / 0,31 / 0,10 → 0,49 / 0,64 / 0,46 (calage du club → par vue).
 
 ## Prochaines étapes (dans l'ordre)
