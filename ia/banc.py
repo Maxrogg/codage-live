@@ -76,11 +76,12 @@ def temps(seq, radar):
     return [round(seq['debut'] + k / seq['fps'], 3) for k in range(n)]
 
 
-def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt', T=None, dossier=None):
+def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt', T=None, dossier=None, ballon='yolo'):
     """T avec "vues" (calage par vue, caler_vues.py) : H de chaque image = image → mètres (G = identité ensuite)."""
     from ultralytics import YOLO
     import suivi
     model = YOLO(model_name)
+    mballon = YOLO(os.path.join(HERE, 'modeles', 'football-ball-detection.pt')) if ballon != 'yolo' else None
     tr = sr.CameraTracker()
     f_ref = tr.features(ref_img, [])
     refs = suivi.references(tr, T, ref_img, dossier) if T and T.get('vues') else None
@@ -95,6 +96,9 @@ def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt', T=None, do
         if not ok:
             continue
         P, B = sr.detect(model, fr, imgsz=imgsz)
+        if mballon is not None:                         # ballon par le modèle football (seul, ou avec celui de YOLO)
+            Bf = sr.ballons_foot(mballon, fr)
+            B = Bf if ballon == 'foot' else B + [b for b in Bf if all(abs(b[0] - o[0]) > 12 or abs(b[1] - o[1]) > 12 for o in B)]
         boxes = [p['box'] for p in P]
         fe = tr.features(fr, boxes)
         H = suivi.relier(tr, fe, refs) if refs else tr.homography(fe, f_ref)
@@ -264,6 +268,8 @@ def main():
                     help='auto = regroupement des maillots (equipes.py) ; couleurs = anciennes couleurs écrites en dur')
     ap.add_argument('--modele', default='yolo11s.pt', help='modèle YOLO (ex. yolo11m.pt)')
     ap.add_argument('--taille', type=int, default=2880, help='résolution donnée à YOLO')
+    ap.add_argument('--ballon', choices=['yolo', 'foot', 'les2'], default='yolo',
+                    help='ballon : YOLO général (yolo), modèle football roboflow (foot), ou les deux')
     ap.add_argument('--suivi', action='store_true', help="joueurs par pistes (suivi.py) au lieu d'image par image")
     ap.add_argument('--terrain', help='autre dossier de terrain pour toutes les séquences (ex. references/terrain_club_auto)')
     a = ap.parse_args()
@@ -279,16 +285,19 @@ def main():
                                             'terrain.json'), encoding='utf-8'))
         radar = noter.load_raw(os.path.join(REF, seq['radar'], 'radar_brut.json')) if seq.get('radar') else None
         suf = '' if (a.modele, a.taille) == ('yolo11s.pt', 2880) else '_%s_%d' % (a.modele.replace('.pt', ''), a.taille)
+        suf += '' if a.ballon == 'yolo' else '_ballon_' + a.ballon
         cp = os.path.join(REF, 'banc_cache', seq['nom'] + suf + '.json')
         mp = os.path.join(REF, 'banc_cache', seq['nom'] + suf + '_lignes.npz')
         cache = json.load(open(cp, encoding='utf-8')) if os.path.exists(cp) else None
         cle = {k: seq[k] for k in ('video', 'debut', 'duree', 'fps')}
         cle['terrain'] = seq['terrain']
+        if a.ballon != 'yolo':
+            cle['ballon'] = a.ballon
         perime = (cache is None or cache.get('version') != version_detection() or cache.get('cle') != cle
                   or (cache.get('model'), cache.get('imgsz')) != (a.modele, a.taille))
         if a.refaire or perime:
             cache, masques = construire(seq, ref_img, temps(seq, radar), imgsz=a.taille, model_name=a.modele,
-                                        T=T, dossier=cfg['terrains'][seq['terrain']])
+                                        T=T, dossier=cfg['terrains'][seq['terrain']], ballon=a.ballon)
             cache['cle'] = cle
             json.dump(cache, open(cp, 'w', encoding='utf-8'))
             np.savez_compressed(mp, **masques)
@@ -300,7 +309,7 @@ def main():
         G = np.eye(3) if T.get('vues') else np.array(T['G'])     # calage par vue : H va déjà jusqu'aux mètres
         res = mesurer(seq, cache, masques, G, T.get('dims', {}), radar, suivi=a.suivi)
         res.update(date=time.strftime('%Y-%m-%d %H:%M'), version=version_git(), sequence=seq['nom'],
-                   reglages='equipes=%s%s terrain=%s modele=%s/%d' % (a.equipes, ' suivi' if a.suivi else '', os.path.basename(a.terrain or seq['terrain']),
+                   reglages='equipes=%s%s ballon=%s terrain=%s modele=%s/%d' % (a.equipes, ' suivi' if a.suivi else '', a.ballon, os.path.basename(a.terrain or seq['terrain']),
                                                                      a.modele, a.taille))
         rows.append(res)
     old = historique(rows)

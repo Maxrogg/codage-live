@@ -100,6 +100,18 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
   dans les deux cas ; Cascol : ratées toujours ~2 x trop. CONCLUSION : le défaut vient des ENTRÉES (faux ballons, équipes),
   pas des règles → prochain levier = meilleur détecteur de ballon (modèles football de roboflow/sports, à télécharger avec
   l'accord du coach), pas de réglage de jeu.CFG.
+- Modèles football de roboflow/sports téléchargés (ia/modeles/, ~137 Mo chacun, hors dépôt). Joueurs : rate les joueurs
+  proches de la caméra (entraîné sur la télé), prend des jaunes pour l'arbitre → non utilisé. Ballon (tuiles 640 px, banc
+  `--ballon`) : seul, ballon vu 81 → 21 % (off_placee), note 26 → 0 → écarté ; avec YOLO (`les2`) : vu 81 → 83 %, Cascol
+  69/79/49 → 77/80/54 %, sauts 0,02 → 0,07, +0,4 s / image → gain trop faible, option seulement.
+- Avec les positions du RADAR, jeu.py compte juste (réussies 6 pour 7, ratées 3 pour 1) ; avec la vidéo 11 et 9 → ce sont
+  les ENTRÉES (ballon surtout) qui gonflent les passes.
+- Réglage du chemin du ballon (ball_path) contre le ballon du radar : des réglages donnent moins de passes sur Cascol, mais
+  SEULEMENT parce que le ballon est moins vu (96 → 80-86 %) ; précision des passes inchangée (≈ 62 / 58 %, Veo 74 / 65),
+  test des leurres raté → ABANDONNÉ (leçon : un chiffre plus proche de Veo n'est pas forcément un progrès ; regarder aussi
+  la précision et la part de ballon vu).
+- Gardé : ballon lissé (Savitzky-Golay 1 s) dans vision_brut et le suivi. off_placee : note 26 → 39 (sans suivi), 52 → 43
+  (avec suivi) = bruit sur 10 actions ; Cascol : passes 382 → 290 à ballon vu égal. À trancher avec le codage du coach.
 - Banc : séquences Cascol sur `terrain_cascol` (calage par vue). Lignes 0,19 / 0,31 / 0,10 → 0,49 / 0,64 / 0,46 (calage du club → par vue).
 
 ## Prochaines étapes (dans l'ordre)

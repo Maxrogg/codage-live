@@ -91,6 +91,30 @@ def detect(model, frame, imgsz=2880, conf=0.12, **kw):
     return players, balls
 
 
+def ballons_foot(model, frame, conf=0.1, **kw):
+    """Ballons par un modèle ENTRAÎNÉ POUR LE FOOTBALL (roboflow/sports, football-ball-detection.pt, YOLOv8, 640 px),
+    passé sur des tuiles de 640 x 640 (le ballon est minuscule dans l'image entière) ; doublons des tuiles fusionnés.
+    Renvoie [(x, y, confiance)] en pixels de l'image."""
+    H, W = frame.shape[:2]
+    out = []
+    ys = sorted(set(list(range(0, max(1, H - 640), 540)) + [max(0, H - 640)]))
+    xs = sorted(set(list(range(0, max(1, W - 640), 560)) + [max(0, W - 640)]))
+    for y in ys:
+        for x in xs:
+            r = model.predict(frame[y:y + 640, x:x + 640], imgsz=640, conf=conf, verbose=False, **kw)[0]
+            for b, c in zip(r.boxes.xyxy.tolist(), r.boxes.conf.tolist()):
+                cx, cy = (b[0] + b[2]) / 2 + x, (b[1] + b[3]) / 2 + y
+                if cx > W * 0.84 and cy > H * 0.86:            # logo Veo
+                    continue
+                dup = [k for k, o in enumerate(out) if abs(o[0] - cx) < 12 and abs(o[1] - cy) < 12]
+                if dup:
+                    k = dup[0]
+                    out[k] = max(out[k], (cx, cy, c), key=lambda o: o[2])
+                else:
+                    out.append((cx, cy, c))
+    return out
+
+
 def descripteur(frame, box):
     """Empreinte couleur du maillot (pour trouver les équipes par regroupement, equipes.py) : médianes et
     quartiles L*, a*, b* des pixels du haut du corps qui ne sont pas de la pelouse. None si trop peu de pixels."""
@@ -247,7 +271,10 @@ def ball_path(cands, times, miss=2.5, vmax=30.0, w_jump=0.15, w_conf=3.0):
     cohérent sur toute la séquence (Viterbi). Coût = sauts au-delà de vmax·dt + manque de confiance ;
     « pas vu » coûte `miss`. En live : à faire sur une fenêtre glissante de 1-2 s (petit retard).
     Mesure (test.mp4) : faux ballons à plus de 10 m 20 % → 13 %, erreur médiane 1,6 → 1,5 m, vu 83 % ;
-    note sur les 10 actions 16 → 28 (passes réussies 47 → 59)."""
+    note sur les 10 actions 16 → 28 (passes réussies 47 → 59).
+    19 nov. 2026 : essai miss 4, w_jump 0,5, w_conf 6 → moins de passes sur Cascol (382 → 186, Veo 172) MAIS seulement
+    parce que le ballon est moins vu (96 → 86 %, 2e mi-temps 49 → 19 %) ; précision des passes inchangée (≈ 62 / 58 %,
+    Veo 74 / 65) et test des leurres raté → ABANDONNÉ. Gardé : lissage du ballon (passes.lisser) après clean_brut."""
     import math
     T = len(cands)
     if not T:

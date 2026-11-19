@@ -340,7 +340,8 @@ def brut_suivi(G, frames, path, cfg=None):
     per = positions(pistes, len(dets), cfg)
     brut = [dict(t=round(t, 2), jaune=per[i]['jaune'], noir=per[i]['noir'], ballon=path[i] if i < len(path) else None)
             for i, (t, _) in enumerate(dets)]
-    return sr.clean_brut(brut), pistes
+    import passes
+    return passes.lisser(sr.clean_brut(brut), 5), pistes     # ballon lissé (Savitzky-Golay, 1 s)
 
 
 # --------------------------------------------------------------------------------------------- stats

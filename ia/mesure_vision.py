@@ -182,7 +182,8 @@ def vision_brut(G, frames, path):
         d = sr.to_brut(f['t'], [dict(p, foot=tuple(p['foot'])) for p in f['players']], [], Gk)
         d['ballon'] = b
         out.append(d)
-    return sr.clean_brut(out)
+    import passes
+    return passes.lisser(sr.clean_brut(out), 5)              # ballon lissé (19 nov. 2026)
 
 
 def note_vision(folder, brut):
