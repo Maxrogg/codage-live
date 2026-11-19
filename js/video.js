@@ -102,7 +102,7 @@ FC.video = (function () {
   function renderMini() {
     const cv = $('vd-pitch'); if (!cv.clientWidth) return;
     const e = FC.store.all().find(function (x) { return x.id === sel; });
-    FC.viz.drawLive(cv, { events: e ? [e] : [], flip: false });
+    FC.viz.drawLive(cv, { events: e ? [e] : [], flip: !!FC.store.meta().flip });   // même sens que l'écran de saisie (⇄ Sens)
   }
   function render() {
     if ($('view-video').hidden) return;
