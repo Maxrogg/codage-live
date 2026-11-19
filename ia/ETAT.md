@@ -87,6 +87,19 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
   off_placee identique (note 26, 0,51 m, équipes 0,98 → 0,97) ; Cascol : jaunes vus 5 → 8, noirs 3 → 5 (10e min), lignes
   0,49 → 0,65 ; BAISSE « dans_terrain » 0,97 → 0,82 (spectateurs au soleil maintenant gardés, écartés ensuite par la marge
   du suivi) → gardé. Le banc ne refaisait pas son cache quand une COULEUR changeait : corrigé (réglages dans la version).
+- 1re mi-temps Cascol analysée (12 663 images, 5 / s, 3 morceaux en parallèle ≈ 3,7 images / s) : but de Cascol à 13:21
+  RETROUVÉ (ballon le long de la touche droite, centré devant le but de droite à 800,4 s) ; ballon vu 96 %, joueurs vus
+  par image 10 jaunes / 8 noirs. Possession IA 60 % (Veo 54). PASSES TROP NOMBREUSES : réussies 382 / 221 (Veo 172 / 125),
+  ratées 199 / 196 (Veo 61 / 66), frappes Nous 21 (Veo 5).
+- Sans codage, vérité « à l'œil » (`verifier.py` : planches de 8 images recadrées autour d'actions tirées au hasard) :
+  jugement possible mais lent et souvent ambigu ; constat net : le ballon de l'IA saute sur de faux ballons / des endroits
+  vides (drapeau de l'arbitre assistant pris pour le ballon).
+- Ballon lissé (Savitzky-Golay 5) : réussies Nous 382 → 290, ratées 199 → 156 → utile mais insuffisant.
+- `passes.py` (essai, NON branché) : possession JOUEUR par joueur (Vidal-Codina et al. 2022, arXiv 2202.00804) sur les
+  pistes. off_placee : passes réussies trouvées 6/7 (jeu.py, 11 proposées) → 4/7 (5 proposées) ; ratées 9 proposées pour 1
+  dans les deux cas ; Cascol : ratées toujours ~2 x trop. CONCLUSION : le défaut vient des ENTRÉES (faux ballons, équipes),
+  pas des règles → prochain levier = meilleur détecteur de ballon (modèles football de roboflow/sports, à télécharger avec
+  l'accord du coach), pas de réglage de jeu.CFG.
 - Banc : séquences Cascol sur `terrain_cascol` (calage par vue). Lignes 0,19 / 0,31 / 0,10 → 0,49 / 0,64 / 0,46 (calage du club → par vue).
 
 ## Prochaines étapes (dans l'ordre)

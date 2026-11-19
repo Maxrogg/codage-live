@@ -376,8 +376,9 @@ def possession(frames, cfg=jeu.CFG, dt_max=1.0):
     return (round(100 * tN / tot, 1) if tot else None, round(100 * tE / tot, 1) if tot else None, qui)
 
 
-def stats(brut, nous='jaune', veo=None, half=1):
-    frames, right = jeu.normalize(brut, nous)
+def stats(brut, nous='jaune', veo=None, half=1, sens=None):
+    """sens = 'droite' / 'gauche' (sens d'attaque de Nous dans le repère radar, donné par le coach) ou None (deviné)."""
+    frames, right = jeu.normalize(brut, nous, None if sens is None else sens == 'droite')
     frames = jeu.fill_ball(frames)
     pN, pE, qui = possession(frames)
     ev = jeu.actions(frames, half=half)
@@ -500,6 +501,7 @@ def main():
     p.add_argument('--parties', nargs='*', default=[], help='autres dossiers de détection (même période coupée en morceaux)')
     s = sub.add_parser('stats')
     s.add_argument('sortie'); s.add_argument('--veo'); s.add_argument('--nous', default='jaune')
+    s.add_argument('--sens', choices=['droite', 'gauche'], help="sens d'attaque de Nous (sinon deviné)")
     a = ap.parse_args()
     os.chdir(HERE)
     if a.cmd == 'detecter':
@@ -528,7 +530,7 @@ def main():
         brut = [dict(f, jaune=[tuple(p) for p in f['jaune']], noir=[tuple(p) for p in f['noir']],
                      ballon=tuple(f['ballon']) if f.get('ballon') else None) for f in brut]
         veo = json.load(open(a.veo, encoding='utf-8')) if a.veo else None
-        res, frames, ev = stats(brut, a.nous, veo)
+        res, frames, ev = stats(brut, a.nous, veo, sens=a.sens)
         json.dump(res, open(os.path.join(a.sortie, 'stats.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         json.dump(ev, open(os.path.join(a.sortie, 'actions_ia.json'), 'w', encoding='utf-8'), ensure_ascii=False)
         cp = os.path.join(a.sortie, 'controle.json')
