@@ -54,6 +54,7 @@ MESURES = [
 def version_detection():
     src = ''.join(inspect.getsource(f) for f in (sr.detect, sr.team_of, sr.turf_mask, sr.on_grass, sr.descripteur,
                                                   sr.CameraTracker, sr.plausible, ac.masques))
+    src += repr((sr.GRASS, sr.YEL, sr.DARK, sr.LIME))      # réglages des couleurs (19 nov. : oubliés → cache pas refait)
     return hashlib.sha1(src.encode()).hexdigest()[:10]
 
 
@@ -75,11 +76,14 @@ def temps(seq, radar):
     return [round(seq['debut'] + k / seq['fps'], 3) for k in range(n)]
 
 
-def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt'):
+def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt', T=None, dossier=None):
+    """T avec "vues" (calage par vue, caler_vues.py) : H de chaque image = image → mètres (G = identité ensuite)."""
     from ultralytics import YOLO
+    import suivi
     model = YOLO(model_name)
     tr = sr.CameraTracker()
     f_ref = tr.features(ref_img, [])
+    refs = suivi.references(tr, T, ref_img, dossier) if T and T.get('vues') else None
     cap = cv2.VideoCapture(seq['video'])
     if not cap.isOpened():
         raise SystemExit('Vidéo illisible : ' + seq['video'])
@@ -93,7 +97,7 @@ def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt'):
         P, B = sr.detect(model, fr, imgsz=imgsz)
         boxes = [p['box'] for p in P]
         fe = tr.features(fr, boxes)
-        H = tr.homography(fe, f_ref)
+        H = suivi.relier(tr, fe, refs) if refs else tr.homography(fe, f_ref)
         if H is None and prev is not None and prev[1] is not None:          # de proche en proche
             Hp = tr.homography(fe, prev[0])
             H = prev[1] @ Hp if Hp is not None else None
@@ -283,7 +287,8 @@ def main():
         perime = (cache is None or cache.get('version') != version_detection() or cache.get('cle') != cle
                   or (cache.get('model'), cache.get('imgsz')) != (a.modele, a.taille))
         if a.refaire or perime:
-            cache, masques = construire(seq, ref_img, temps(seq, radar), imgsz=a.taille, model_name=a.modele)
+            cache, masques = construire(seq, ref_img, temps(seq, radar), imgsz=a.taille, model_name=a.modele,
+                                        T=T, dossier=cfg['terrains'][seq['terrain']])
             cache['cle'] = cle
             json.dump(cache, open(cp, 'w', encoding='utf-8'))
             np.savez_compressed(mp, **masques)
@@ -292,7 +297,8 @@ def main():
             import equipes
             info = equipes.assigner(cache['frames'], nous=seq.get('nous', 'jaune'))
             print('  %s équipes : %s' % (seq['nom'], info))
-        res = mesurer(seq, cache, masques, np.array(T['G']), T.get('dims', {}), radar, suivi=a.suivi)
+        G = np.eye(3) if T.get('vues') else np.array(T['G'])     # calage par vue : H va déjà jusqu'aux mètres
+        res = mesurer(seq, cache, masques, G, T.get('dims', {}), radar, suivi=a.suivi)
         res.update(date=time.strftime('%Y-%m-%d %H:%M'), version=version_git(), sequence=seq['nom'],
                    reglages='equipes=%s%s terrain=%s modele=%s/%d' % (a.equipes, ' suivi' if a.suivi else '', os.path.basename(a.terrain or seq['terrain']),
                                                                      a.modele, a.taille))

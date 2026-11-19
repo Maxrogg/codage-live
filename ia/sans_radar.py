@@ -29,7 +29,7 @@ import numpy as np
 YEL = dict(h=(17, 33), s_min=110, v_min=90)          # maillot jaune (Nous)
 DARK = dict(h=(102, 140), s_min=50, v_max=120)        # maillot bleu marine (Eux, « noir » sur le radar)
 LIME = dict(h=(30, 50), s_min=130, v_min=170)         # arbitre (vert fluo)
-GRASS = dict(h=(40, 100), s=(35, 125))               # synthétique : bleu-vert à l'ombre, vert-jaune au soleil
+GRASS = dict(h=(34, 100), s=(35, 200))               # synthétique ; 19 nov. : s ≤ 125 et h ≥ 40 rejetaient le gazon AU SOLEIL de Cascol (s 127-176, h 37-42) → joueurs au soleil écartés
 
 
 def turf_mask(frame):

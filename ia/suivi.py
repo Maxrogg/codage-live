@@ -497,6 +497,7 @@ def main():
     d.add_argument('--terrain', default='references/terrain_club')
     p = sub.add_parser('pistes')
     p.add_argument('sortie'); p.add_argument('--terrain', default=None, help='anciennes détections (sans H_radar) seulement')
+    p.add_argument('--parties', nargs='*', default=[], help='autres dossiers de détection (même période coupée en morceaux)')
     s = sub.add_parser('stats')
     s.add_argument('sortie'); s.add_argument('--veo'); s.add_argument('--nous', default='jaune')
     a = ap.parse_args()
@@ -512,6 +513,9 @@ def main():
             T, _ = banc.charger_terrain(a.terrain or src['terrain'])
             G = np.array(T['G'])
         frames = charger(a.sortie)
+        for d in a.parties:
+            frames += charger(d)
+        frames.sort(key=lambda f: f['t'])
         path = ballon(G, frames)
         brut, pistes = brut_suivi(G, frames, path)
         json.dump(brut, open(os.path.join(a.sortie, 'radar_brut.json'), 'w', encoding='utf-8'))

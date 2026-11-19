@@ -81,6 +81,13 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
   ATTENTION : +26 points = 2 actions de plus sur 10 (1 passe, 1 déséquilibre) → dans le bruit ; réglages des pistes testés :
   note 46 à 52 partout → le suivi ne dégrade rien, gain réel à confirmer sur une référence longue.
 - Vitesse : relier chaque image aux 5 vues coûtait 0,5 s / image → la vue de l'image précédente est essayée d'abord : 0,15 s.
+- BUG trouvé en regardant une image (8:00) : YOLO voyait les joueurs mais le filtre « pieds sur le gazon » écartait tous ceux
+  AU SOLEIL (gazon de Cascol au soleil : saturation 127-176 > 125, teinte 37-42 < 40) → 2 joueurs par équipe et par image,
+  possession 16 / 84 sur 2 min (absurde). GRASS élargi (h ≥ 34, s ≤ 200). Banc, MÊME terrain avant / après :
+  off_placee identique (note 26, 0,51 m, équipes 0,98 → 0,97) ; Cascol : jaunes vus 5 → 8, noirs 3 → 5 (10e min), lignes
+  0,49 → 0,65 ; BAISSE « dans_terrain » 0,97 → 0,82 (spectateurs au soleil maintenant gardés, écartés ensuite par la marge
+  du suivi) → gardé. Le banc ne refaisait pas son cache quand une COULEUR changeait : corrigé (réglages dans la version).
+- Banc : séquences Cascol sur `terrain_cascol` (calage par vue). Lignes 0,19 / 0,31 / 0,10 → 0,49 / 0,64 / 0,46 (calage du club → par vue).
 
 ## Prochaines étapes (dans l'ordre)
 1. Le coach valide la branche ia/radar-jaune-noir (puis fusion + push ; les tests `tests/` demandent Node, pas encore installé sur ce PC).
