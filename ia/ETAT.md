@@ -60,6 +60,28 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
 - Note des actions depuis un codage SANS radar (banc : clé "codage" d'une séquence) : vérifié sur off_placee, même note (26)
   qu'avec le radar. Prêt pour le codage du match Cascol par le coach.
 
+## Journal de bord (19 nov.) : suivi d'un match entier (demande du coach : « suivi radar du ballon et des joueurs, quadrille le terrain »)
+- Match Cascol (Desktop, 2 h 03) : Nous = jaune, Eux = noir. 1re mi-temps = 6:55 → 49:10 de la vidéo (coup d'envoi et fin
+  repérés sur des planches d'images). Stats Veo de la 1re période (capture du coach) dans `references/cascol/veo_mt1.json` :
+  possession 54 / 46, passes 233 (172 réussies) / 191 (125), tentatives 5 / 4. Elles servent de CONTRÔLE, pas de cible de réglage.
+- BLOQUANT trouvé : le calage du club (fait sur test.mp4) est faux sur Cascol (touche dans les arbres). Une seule image de
+  référence au centre : 62 % des images s'y relient. Avec 4 ancres (côtés, buts) : 100 %.
+- Calage unique sur 16 repères lus à la main (zoom) : 1,2 m d'erreur moyenne, ligne médiane décalée. CAUSE MESURÉE : la même
+  image de but reliée à la référence par 2 chemins → 10 à 110 px d'écart (l'homographie extrapole loin hors de l'image de
+  référence). L'affinage automatique sur les lignes blanches (ICP) dérive de 1 à 6 m (terrains voisins visibles au fond) → écarté.
+- SOLUTION : calage PAR VUE (`caler_vues.py`) : 4 vues (centre, demi-terrain gauche, but gauche, but droit) + 1 vue reliée,
+  chacune calée sur ses propres repères, dimensions communes trouvées en même temps : **98,0 x 60,4 m**, écart médian
+  0,12 m (62 observations). Contrôle : retirer une vue ne bouge pas la largeur (60,7) ; la LONGUEUR ne tient qu'à la vue de la
+  27e minute (seule à montrer surface + rond) → à confirmer par le coach. Lignes dessinées justes sur 8 vues sur 9 ; à 48:00,
+  ligne médiane décalée de quelques mètres près de la caméra (limite connue).
+  Chaque image se relie à la vue qui lui ressemble le plus (`suivi.relier`) : 125 / 125 images testées.
+- `suivi.py` : détection de toute la mi-temps (reprise possible), PISTES des joueurs en mètres (équipe = majorité de la piste),
+  chemin du ballon, stats (possession au temps, actions jeu.py, quadrillage 3 tiers x 3 couloirs, cartes de chaleur, rapport HTML).
+  Mesure off_placee (banc `--suivi`) : erreur joueurs 0,51 → 0,52 m, équipes 0,98 = 0,98, jaunes vus 8 → 9, note 26 → 52.
+  ATTENTION : +26 points = 2 actions de plus sur 10 (1 passe, 1 déséquilibre) → dans le bruit ; réglages des pistes testés :
+  note 46 à 52 partout → le suivi ne dégrade rien, gain réel à confirmer sur une référence longue.
+- Vitesse : relier chaque image aux 5 vues coûtait 0,5 s / image → la vue de l'image précédente est essayée d'abord : 0,15 s.
+
 ## Prochaines étapes (dans l'ordre)
 1. Le coach valide la branche ia/radar-jaune-noir (puis fusion + push ; les tests `tests/` demandent Node, pas encore installé sur ce PC).
 2. Référence plus longue : 5 à 10 min (≥ 50 actions) enregistrées avec le radar AGRANDI + codées → réglage de `CFG` en suivant la note (avant / après, voir CLAUDE.md).

@@ -126,7 +126,7 @@ def charger_masques(npz):
     return out
 
 
-def mesurer(seq, cache, masques, G, dims, radar):
+def mesurer(seq, cache, masques, G, dims, radar, suivi=False):
     fr = cache['frames']
     rel = [f for f in fr if f['H'] is not None]
     res = dict(reliees=len(rel) / max(1, len(fr)), s_image=cache['s_image'])
@@ -145,7 +145,13 @@ def mesurer(seq, cache, masques, G, dims, radar):
     # positions en mètres (format radar_brut) + ballon cohérent
     cands = [sr.ball_candidates(f['balls'], G @ np.array(f['H'])) for f in rel]
     path = sr.ball_path(cands, [f['t'] for f in rel])
-    brut = mv.vision_brut(G, rel, path)
+    if suivi:                                    # joueurs par pistes (suivi.py) : équipe = majorité de la piste
+        import suivi as sv
+        brut, pistes = sv.brut_suivi(G, rel, path)
+        res.update({'pistes_' + k: v for k, v in sv.controle(pistes).items()})
+        rel = sv.reetiqueter(rel, G, pistes)
+    else:
+        brut = mv.vision_brut(G, rel, path)
     med, trop = ac.joueurs(brut)
     res.update(jaune=med['jaune'], noir=med['noir'], trop_11=trop)
     res['ballon_vu'], res['ballon_sauts'] = ac.ballon(path, [f['t'] for f in rel])
@@ -254,6 +260,7 @@ def main():
                     help='auto = regroupement des maillots (equipes.py) ; couleurs = anciennes couleurs écrites en dur')
     ap.add_argument('--modele', default='yolo11s.pt', help='modèle YOLO (ex. yolo11m.pt)')
     ap.add_argument('--taille', type=int, default=2880, help='résolution donnée à YOLO')
+    ap.add_argument('--suivi', action='store_true', help="joueurs par pistes (suivi.py) au lieu d'image par image")
     ap.add_argument('--terrain', help='autre dossier de terrain pour toutes les séquences (ex. references/terrain_club_auto)')
     a = ap.parse_args()
     cfg = json.load(open(a.config, encoding='utf-8'))
@@ -285,9 +292,9 @@ def main():
             import equipes
             info = equipes.assigner(cache['frames'], nous=seq.get('nous', 'jaune'))
             print('  %s équipes : %s' % (seq['nom'], info))
-        res = mesurer(seq, cache, masques, np.array(T['G']), T.get('dims', {}), radar)
+        res = mesurer(seq, cache, masques, np.array(T['G']), T.get('dims', {}), radar, suivi=a.suivi)
         res.update(date=time.strftime('%Y-%m-%d %H:%M'), version=version_git(), sequence=seq['nom'],
-                   reglages='equipes=%s terrain=%s modele=%s/%d' % (a.equipes, os.path.basename(a.terrain or seq['terrain']),
+                   reglages='equipes=%s%s terrain=%s modele=%s/%d' % (a.equipes, ' suivi' if a.suivi else '', os.path.basename(a.terrain or seq['terrain']),
                                                                      a.modele, a.taille))
         rows.append(res)
     old = historique(rows)

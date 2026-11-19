@@ -311,6 +311,27 @@ ok(sans_radar.plausible(np.eye(3)) and not sans_radar.plausible(np.diag([20, 20,
    and not sans_radar.plausible(np.array([[1, 0, 0], [0, 1, 0], [-0.001, 0, 1.0]])),
    'décor : liens invraisemblables refusés (zoom × 20, image retournée)')
 
+# --- suivi (suivi.py) : deux joueurs qui se croisent, maillot souvent illisible ---
+import suivi  # noqa: E402
+dets = []
+for k in range(40):                                   # 5 images / s, 8 s ; A va de gauche à droite, B l'inverse
+    t = k * 0.2
+    a = dict(x=30 + 0.8 * k, y=30.0, team='jaune' if k % 4 == 0 else 'inconnu', conf=0.8)
+    b = dict(x=61 - 0.8 * k, y=31.5, team='noir' if k % 4 == 1 else 'inconnu', conf=0.8)
+    dets.append((t, [a, b] if k != 20 else [a]))      # B disparaît une image
+pistes = suivi.suivre(dets)
+eq = sorted(p['team'] for p in pistes)
+ok(len(pistes) == 2 and eq == ['jaune', 'noir'], 'suivi : 2 pistes, équipe par majorité malgré les maillots illisibles (%s)' % eq)
+per = suivi.positions(pistes, len(dets))
+ok(all(len(f['jaune']) == 1 and len(f['noir']) == 1 for f in per), 'suivi : chaque image a son jaune et son noir (trou comblé)')
+c = suivi.controle(pistes)
+ok(c['trop_vite'] == 0 and c['equipe_contredite'] == 0, 'suivi : contrôle sans vérité propre (%s)' % c)
+fr = [dict(t=k * 0.2, N=[(50, 34)], E=[(60, 34)], ballon=(50.5, 34) if k < 10 else (59.5, 34)) for k in range(20)]
+pN, pE, _ = suivi.possession(fr)
+ok(pN is not None and abs(pN - 47.4) < 1 and abs(pN + pE - 100) < 0.2, 'suivi : possession par temps (%s / %s)' % (pN, pE))
+ok(suivi.zone((10, 5)) == (0, 0) and suivi.zone((100, 60)) == (2, 2) and suivi.zone((50, 34)) == (1, 1),
+   'suivi : quadrillage 3 tiers x 3 couloirs')
+
 print('\n' + ('TOUT EST OK' if not FAIL else '%d ÉCHEC(S)' % len(FAIL)))
 print('match_ia de test :', os.path.join(tmp, 'out', 'match_ia.json'))
 sys.exit(1 if FAIL else 0)
