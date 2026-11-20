@@ -116,16 +116,109 @@ def donnees(dossiers, sortie, n_pos=2500, n_neg=1200, graine=0):
     print('%d positifs, %d négatifs → %s' % (len(pos), len(neg), sortie))
 
 
-def entrainer(ds, epoques=30, base='yolo11s.pt'):
+def entrainer(ds, epoques=30, base='yolo11s.pt', sortie='modeles/ballon_club.pt', nom='ballon'):
     from ultralytics import YOLO
     m = YOLO(os.path.join(HERE, base))
-    m.train(data=os.path.join(ds, 'ballon.yaml'), epochs=epoques, imgsz=T, batch=16, device=0, workers=0,           # workers > 0 : plantage sous Windows (19 nov.)
-           
-            project=os.path.abspath(os.path.join(ds, 'runs')), name='ballon', exist_ok=True, verbose=False, plots=False)
-    best = os.path.join(ds, 'runs', 'ballon', 'weights', 'best.pt')
-    os.makedirs(os.path.join(HERE, 'modeles'), exist_ok=True)
-    shutil.copy(best, os.path.join(HERE, 'modeles', 'ballon_club.pt'))
-    print('→ modeles/ballon_club.pt')
+    m.train(data=os.path.join(ds, 'ballon.yaml'), epochs=epoques, imgsz=T, batch=16, device=0,
+            workers=0,                     # workers > 0 : plantage sous Windows (19 nov.)
+            project=os.path.abspath(os.path.join(ds, 'runs')), name=nom, exist_ok=True, verbose=False, plots=False)
+    best = os.path.join(ds, 'runs', nom, 'weights', 'best.pt')
+    os.makedirs(os.path.dirname(os.path.join(HERE, sortie)), exist_ok=True)
+    shutil.copy(best, os.path.join(HERE, sortie))
+    print('->', sortie)
+
+
+def controler(modele, conf=0.1):
+    """Contrôle sur test.mp4 (séquence off_placee, JAMAIS utilisée à l'entraînement) contre le ballon du RADAR et le
+    codage du coach : dict(juste, faux, non_vu, reussies_trouvees, reussies_vraies, reussies_ia, ratees_ia)."""
+    import banc
+    import comparer
+    import jeu
+    import mesure_vision as mv
+    import noter
+    from ultralytics import YOLO
+    T_, _ = banc.charger_terrain('references/terrain_club')
+    G = np.array(T_['G'])
+    cache = json.load(open(os.path.join(HERE, 'references', 'banc_cache', 'off_placee.json'), encoding='utf-8'))
+    rel = [f for f in cache['frames'] if f['H'] is not None]
+    seq = [q for q in json.load(open(os.path.join(HERE, 'references', 'banc.json'), encoding='utf-8'))['sequences']
+           if q['nom'] == 'off_placee'][0]
+    dec = seq['decalage']
+    rad = mv.radar_at(noter.load_raw(os.path.join(HERE, 'references', 'off_placee', 'radar_brut.json')))
+    m = YOLO(os.path.join(HERE, modele))
+    cap = cv2.VideoCapture(seq['video'])
+    fr = []
+    for f in rel:
+        cap.set(cv2.CAP_PROP_POS_MSEC, f['t'] * 1000)
+        ok, img = cap.read()
+        fr.append(dict(f, balls=[list(b) for b in sr.ballons_foot(m, img, conf=conf, device=0, half=True)] if ok else []))
+    cands = [sr.ball_candidates(f['balls'], G @ np.array(f['H'])) for f in fr]
+    path = sr.ball_path(cands, [f['t'] for f in fr])
+    res = dict(juste=0, faux=0, non_vu=0)
+    for f, p in zip(fr, path):
+        q = rad.get(round(f['t'] + dec, 2), {}).get('ballon')
+        if not q:
+            continue
+        if p is None:
+            res['non_vu'] += 1
+        elif np.hypot(p[0] - q[0], p[1] - q[1]) < 3:
+            res['juste'] += 1
+        else:
+            res['faux'] += 1
+    brut, _ = suivi.brut_suivi(G, fr, path)
+    brut = [dict(x, t=round(x['t'] + dec, 2)) for x in brut]
+    ref = json.load(open(os.path.join(HERE, 'references', 'off_placee', 'ref.json'), encoding='utf-8'))
+    frs, _ = jeu.normalize(brut, ref['nous'], ref['sens'] == 'droite')
+    ia = jeu.actions(jeu.fill_ball(frs))
+    man, _ = comparer.load(os.path.join(HERE, 'references', 'off_placee', 'codage.json'))
+    man = [e for e in man if e.get('video_s') is not None and frs[0]['t'] - 1 <= e['video_s'] <= frs[-1]['t'] + 1]
+    ok_m = [e for e in man if comparer.CATS[0][1](e)]
+    ok_i = [e for e in ia if comparer.CATS[0][1](e)]
+    res.update(reussies_trouvees=len(comparer.match(ok_m, ok_i, 4.0)), reussies_vraies=len(ok_m), reussies_ia=len(ok_i),
+               ratees_ia=sum(1 for e in ia if comparer.CATS[1][1](e)))
+    return res
+
+
+def score(r):
+    """Plus haut = mieux : un faux ballon coûte deux fois un ballon juste (c'est lui qui invente des passes)."""
+    return r['juste'] - 2 * r['faux']
+
+
+def boucle(dossiers, tours=3, epoques=20, journal='references/ballon_boucle.csv'):
+    """Auto-amélioration : le meilleur modèle refait le ballon des analyses (ballons sûrs de SES détections) → nouvel
+    entraînement → contrôle sur test.mp4 → gardé seulement s'il fait mieux (score, et pas plus de 3 ballons justes en
+    moins). Journal : references/ballon_boucle.csv."""
+    import csv
+    import time as _t
+    best = 'modeles/ballon_club.pt'
+    rb = controler(best)
+    print('départ', best, rb, 'score', score(rb), flush=True)
+    for k in range(1, tours + 1):
+        tag = 'r%d' % k
+        dets = []
+        for d in dossiers:
+            dn = os.path.normpath(d)
+            out = os.path.normpath(os.path.join(os.path.dirname(dn), '..', 'boucle_' + tag, os.path.basename(dn)))
+            suivi.reballon(d, out, best)
+            dets.append(out)
+        ds = os.path.join(HERE, 'references', 'ballon_ds_' + tag)
+        donnees(dets, ds, n_pos=4000, n_neg=1500, graine=k)
+        cand = 'modeles/ballon_club_%s.pt' % tag
+        entrainer(ds, epoques, sortie=cand, nom=tag)
+        rc = controler(cand)
+        garde = score(rc) > score(rb) and rc['juste'] >= rb['juste'] - 3
+        print(tag, rc, 'score', score(rc), '->', 'GARDÉ' if garde else 'écarté', flush=True)
+        new = not os.path.exists(journal)
+        with open(journal, 'a', newline='', encoding='utf-8') as fh:
+            w = csv.writer(fh, delimiter=';')
+            if new:
+                w.writerow(['date', 'tour', 'modele', 'juste', 'faux', 'non_vu', 'reussies_trouvees', 'reussies_ia',
+                            'ratees_ia', 'score', 'decision'])
+            w.writerow([_t.strftime('%Y-%m-%d %H:%M'), tag, cand, rc['juste'], rc['faux'], rc['non_vu'],
+                        rc['reussies_trouvees'], rc['reussies_ia'], rc['ratees_ia'], score(rc), 'garde' if garde else 'ecarte'])
+        if garde:
+            shutil.copy(os.path.join(HERE, cand), os.path.join(HERE, 'modeles', 'ballon_club.pt'))
+            rb = rc
 
 
 def main():
@@ -134,12 +227,20 @@ def main():
     d = sub.add_parser('donnees'); d.add_argument('dossiers', nargs='+'); d.add_argument('--sortie', required=True)
     d.add_argument('--positifs', type=int, default=2500); d.add_argument('--negatifs', type=int, default=1200)
     e = sub.add_parser('entrainer'); e.add_argument('ds'); e.add_argument('--epoques', type=int, default=30)
+    c = sub.add_parser('controler'); c.add_argument('modele')
+    b = sub.add_parser('boucle'); b.add_argument('dossiers', nargs='+'); b.add_argument('--tours', type=int, default=3)
+    b.add_argument('--epoques', type=int, default=20)
     a = ap.parse_args()
     os.chdir(HERE)
     if a.cmd == 'donnees':
         donnees(a.dossiers, a.sortie, a.positifs, a.negatifs)
-    else:
+    elif a.cmd == 'entrainer':
         entrainer(a.ds, a.epoques)
+    elif a.cmd == 'controler':
+        r = controler(a.modele)
+        print(r, 'score', score(r))
+    else:
+        boucle(a.dossiers, a.tours, a.epoques)
 
 
 if __name__ == '__main__':
