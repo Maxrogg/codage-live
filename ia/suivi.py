@@ -225,6 +225,42 @@ def relier(tr, fe, refs, assez=120):
 relier.derniere = None
 
 
+def reballon(dossier, sortie, modele='modeles/ballon_club.pt', conf=0.1):
+    """Refait SEULEMENT le ballon d'une analyse existante avec un autre détecteur (tuiles de 640 px) ; joueurs et décor
+    inchangés. Écrit <sortie>/detections.jsonl + source.json (reprise possible)."""
+    import cv2
+    from ultralytics import YOLO
+    frames = charger(dossier)
+    src = json.load(open(os.path.join(dossier, 'source.json'), encoding='utf-8'))
+    os.makedirs(sortie, exist_ok=True)
+    json.dump(dict(src, ballon=modele), open(os.path.join(sortie, 'source.json'), 'w', encoding='utf-8'), indent=1)
+    path = os.path.join(sortie, 'detections.jsonl')
+    faits = len(charger(sortie)) if os.path.exists(path) else 0
+    m = YOLO(os.path.join(HERE, modele))
+    cap = cv2.VideoCapture(src['video'])
+    vfps = cap.get(cv2.CAP_PROP_FPS)
+    pos, t0 = None, time.time()
+    with open(path, 'a', encoding='utf-8') as out:
+        for n, f in enumerate(frames[faits:]):
+            k = int(round(f['t'] * vfps))
+            if pos is None or k < pos or k - pos > 60:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, k)
+                pos = k
+            while pos < k:
+                cap.grab()
+                pos += 1
+            ok, img = cap.read()
+            pos += 1
+            if not ok:
+                break
+            B = sr.ballons_foot(m, img, conf=conf, device=0, half=True)
+            out.write(json.dumps(dict(f, balls=[[round(b[0], 1), round(b[1], 1), round(b[2], 3)] for b in B])) + '\n')
+            if n % 200 == 0:
+                out.flush()
+                print('\r  %d / %d images (%.1f / s)' % (faits + n, len(frames), (n + 1) / (time.time() - t0)), end='', flush=True)
+    print()
+
+
 def charger(sortie):
     out = []
     with open(os.path.join(sortie, 'detections.jsonl'), encoding='utf-8') as fh:
@@ -551,6 +587,8 @@ def main():
     p = sub.add_parser('pistes')
     p.add_argument('sortie'); p.add_argument('--terrain', default=None, help='anciennes détections (sans H_radar) seulement')
     p.add_argument('--parties', nargs='*', default=[], help='autres dossiers de détection (même période coupée en morceaux)')
+    r = sub.add_parser('reballon')
+    r.add_argument('dossier'); r.add_argument('--sortie', required=True); r.add_argument('--modele', default='modeles/ballon_club.pt')
     s = sub.add_parser('stats')
     s.add_argument('sortie'); s.add_argument('--veo'); s.add_argument('--nous', default='jaune')
     s.add_argument('--sens', choices=['droite', 'gauche'], help="sens d'attaque de Nous (sinon deviné)")
@@ -558,6 +596,8 @@ def main():
     os.chdir(HERE)
     if a.cmd == 'detecter':
         detecter(a.video, a.debut, a.fin, a.fps, a.sortie, a.terrain)
+    elif a.cmd == 'reballon':
+        reballon(a.dossier, a.sortie, a.modele)
     elif a.cmd == 'pistes':
         import banc
         src = json.load(open(os.path.join(a.sortie, 'source.json'), encoding='utf-8'))

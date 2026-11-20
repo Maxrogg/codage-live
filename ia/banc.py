@@ -81,7 +81,8 @@ def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt', T=None, do
     from ultralytics import YOLO
     import suivi
     model = YOLO(model_name)
-    mballon = YOLO(os.path.join(HERE, 'modeles', 'football-ball-detection.pt')) if ballon != 'yolo' else None
+    mballon = None if ballon == 'yolo' else YOLO(os.path.join(HERE, 'modeles', 'ballon_club.pt' if ballon == 'club'
+                                                             else 'football-ball-detection.pt'))
     tr = sr.CameraTracker()
     f_ref = tr.features(ref_img, [])
     refs = suivi.references(tr, T, ref_img, dossier) if T and T.get('vues') else None
@@ -98,7 +99,7 @@ def construire(seq, ref_img, ts, imgsz=2880, model_name='yolo11s.pt', T=None, do
         P, B = sr.detect(model, fr, imgsz=imgsz)
         if mballon is not None:                         # ballon par le modèle football (seul, ou avec celui de YOLO)
             Bf = sr.ballons_foot(mballon, fr)
-            B = Bf if ballon == 'foot' else B + [b for b in Bf if all(abs(b[0] - o[0]) > 12 or abs(b[1] - o[1]) > 12 for o in B)]
+            B = Bf if ballon in ('foot', 'club') else B + [b for b in Bf if all(abs(b[0] - o[0]) > 12 or abs(b[1] - o[1]) > 12 for o in B)]
         boxes = [p['box'] for p in P]
         fe = tr.features(fr, boxes)
         H = suivi.relier(tr, fe, refs) if refs else tr.homography(fe, f_ref)
@@ -268,8 +269,8 @@ def main():
                     help='auto = regroupement des maillots (equipes.py) ; couleurs = anciennes couleurs écrites en dur')
     ap.add_argument('--modele', default='yolo11s.pt', help='modèle YOLO (ex. yolo11m.pt)')
     ap.add_argument('--taille', type=int, default=2880, help='résolution donnée à YOLO')
-    ap.add_argument('--ballon', choices=['yolo', 'foot', 'les2'], default='yolo',
-                    help='ballon : YOLO général (yolo), modèle football roboflow (foot), ou les deux')
+    ap.add_argument('--ballon', choices=['yolo', 'foot', 'les2', 'club'], default='yolo',
+                    help='ballon : YOLO général (yolo), modèle football roboflow (foot), les deux, ou entraîné sur nos vidéos (club)')
     ap.add_argument('--suivi', action='store_true', help="joueurs par pistes (suivi.py) au lieu d'image par image")
     ap.add_argument('--terrain', help='autre dossier de terrain pour toutes les séquences (ex. references/terrain_club_auto)')
     a = ap.parse_args()

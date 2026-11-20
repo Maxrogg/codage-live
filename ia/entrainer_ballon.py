@@ -119,7 +119,8 @@ def donnees(dossiers, sortie, n_pos=2500, n_neg=1200, graine=0):
 def entrainer(ds, epoques=30, base='yolo11s.pt'):
     from ultralytics import YOLO
     m = YOLO(os.path.join(HERE, base))
-    m.train(data=os.path.join(ds, 'ballon.yaml'), epochs=epoques, imgsz=T, batch=16, device=0, workers=4,
+    m.train(data=os.path.join(ds, 'ballon.yaml'), epochs=epoques, imgsz=T, batch=16, device=0, workers=0,           # workers > 0 : plantage sous Windows (19 nov.)
+           
             project=os.path.abspath(os.path.join(ds, 'runs')), name='ballon', exist_ok=True, verbose=False, plots=False)
     best = os.path.join(ds, 'runs', 'ballon', 'weights', 'best.pt')
     os.makedirs(os.path.join(HERE, 'modeles'), exist_ok=True)

@@ -124,6 +124,12 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
   pour le mesurer (codage du coach, radar Veo).
 - Vitesse : bousculade processeur entre PyTorch (YOLO) et OpenCV (décor) → comparaison du décor sur la carte graphique
   (résultat identique au pixel) : ~0,6 → 0,35 s / image.
+- DÉTECTEUR DE BALLON ENTRAÎNÉ SUR NOS VIDÉOS (`entrainer_ballon.py`, modeles/ballon_club.pt, yolo11s, tuiles 640) :
+  auto-étiquetage sur tout le match Cascol (2 500 ballons sûrs = chemin cohérent + confiance ≥ 0,55 + voisins d'accord ;
+  1 200 tuiles de faux ballons fixes), 16 exemples vérifiés à l'œil = tous de vrais ballons ; 30 époques (workers=0 :
+  plantage Windows sinon), mAP50 0,85. CONTRÔLE sur test.mp4 (jamais vu) contre le radar : ballon juste 88 → 92, FAUX
+  36 → 16, non vu 27 → 43 ; passes réussies trouvées 4/7 (8 proposées) → 5/7 (7) ; passes ratées proposées 7 → 3 (1 vraie)
+  → ADOPTÉ. Ballon de tout le match refait (`suivi.py reballon`, joueurs et décor inchangés) → references/cascol/v3/.
 - Banc : séquences Cascol sur `terrain_cascol` (calage par vue). Lignes 0,19 / 0,31 / 0,10 → 0,49 / 0,64 / 0,46 (calage du club → par vue).
 
 ## Prochaines étapes (dans l'ordre)
