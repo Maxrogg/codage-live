@@ -130,6 +130,13 @@ Banc : `py banc.py` (references/banc.json : off_placee = test.mp4 avec radar + c
   plantage Windows sinon), mAP50 0,85. CONTRÔLE sur test.mp4 (jamais vu) contre le radar : ballon juste 88 → 92, FAUX
   36 → 16, non vu 27 → 43 ; passes réussies trouvées 4/7 (8 proposées) → 5/7 (7) ; passes ratées proposées 7 → 3 (1 vraie)
   → ADOPTÉ. Ballon de tout le match refait (`suivi.py reballon`, joueurs et décor inchangés) → references/cascol/v3/.
+- Match Cascol avec ballon_club (references/cascol/v3) : 1re mi-temps réussies 290/193 → 182/113 (Veo 172/125), ratées
+  156/163 → 72/76 (Veo 61/66), PRÉCISION 65/54 → 71/59 % (Veo 74/65), frappes 22/1 → 13/1 (Veo 5/4), possession 60,7 (54) ;
+  ballon vu 96 → 82 %. ATTENTION : modèle entraîné sur ce match (comparaison flatteuse) ; le contrôle indépendant
+  (test.mp4) va dans le même sens. 2e mi-temps (69:45 → 121:00, Nous attaque à droite) : ballon vu 65 % seulement
+  (lumière de fin d'après-midi ?), précision 54/51 % → point faible.
+- BOUCLE D'AUTO-AMÉLIORATION (`entrainer_ballon.py boucle`, en cours) : 3 tours ré-étiquetage → entraînement →
+  contrôle sur test.mp4 ; départ 92 justes / 16 faux / 43 non vus, score 60 ; journal references/ballon_boucle.csv.
 - Banc : séquences Cascol sur `terrain_cascol` (calage par vue). Lignes 0,19 / 0,31 / 0,10 → 0,49 / 0,64 / 0,46 (calage du club → par vue).
 
 ## Prochaines étapes (dans l'ordre)
