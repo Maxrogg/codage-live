@@ -68,13 +68,13 @@ def cases_fixes(rel, cands, case=1.5, duree=90.0, n_min=25):
     return {k for k, v in vu.items() if len(v) >= n_min and max(v) - min(v) >= duree}
 
 
-def donnees(dossiers, sortie, n_pos=2500, n_neg=1200, graine=0):
+def donnees(dossiers, sortie, n_pos=2500, n_neg=1200, graine=0, conf_min=0.55):
     rng = random.Random(graine)
     pos, neg = [], []
     for d in dossiers:
         fr = suivi.charger(d)
         video = json.load(open(os.path.join(d, 'source.json'), encoding='utf-8'))['video']
-        s, rel, cands = surs(fr)
+        s, rel, cands = surs(fr, conf_min)
         fx = cases_fixes(rel, cands)
         tset = {round(x[0], 2) for x in s}
         n0 = len(neg)
@@ -184,7 +184,7 @@ def score(r):
     return r['juste'] - 2 * r['faux']
 
 
-def boucle(dossiers, tours=3, epoques=20, journal='references/ballon_boucle.csv'):
+def boucle(dossiers, tours=3, epoques=20, journal='references/ballon_boucle.csv', debut=1, depuis_meilleur=False, conf_min=0.55):
     """Auto-amélioration : le meilleur modèle refait le ballon des analyses (ballons sûrs de SES détections) → nouvel
     entraînement → contrôle sur test.mp4 → gardé seulement s'il fait mieux (score, et pas plus de 3 ballons justes en
     moins). Journal : references/ballon_boucle.csv."""
@@ -193,7 +193,7 @@ def boucle(dossiers, tours=3, epoques=20, journal='references/ballon_boucle.csv'
     best = 'modeles/ballon_club.pt'
     rb = controler(best)
     print('départ', best, rb, 'score', score(rb), flush=True)
-    for k in range(1, tours + 1):
+    for k in range(debut, debut + tours):
         tag = 'r%d' % k
         dets = []
         for d in dossiers:
@@ -202,9 +202,9 @@ def boucle(dossiers, tours=3, epoques=20, journal='references/ballon_boucle.csv'
             suivi.reballon(d, out, best)
             dets.append(out)
         ds = os.path.join(HERE, 'references', 'ballon_ds_' + tag)
-        donnees(dets, ds, n_pos=4000, n_neg=1500, graine=k)
+        donnees(dets, ds, n_pos=4000, n_neg=1500, graine=k, conf_min=conf_min)
         cand = 'modeles/ballon_club_%s.pt' % tag
-        entrainer(ds, epoques, sortie=cand, nom=tag)
+        entrainer(ds, epoques, sortie=cand, nom=tag, base=best if depuis_meilleur else 'yolo11s.pt')
         rc = controler(cand)
         garde = score(rc) > score(rb) and rc['juste'] >= rb['juste'] - 3
         print(tag, rc, 'score', score(rc), '->', 'GARDÉ' if garde else 'écarté', flush=True)
@@ -229,7 +229,9 @@ def main():
     e = sub.add_parser('entrainer'); e.add_argument('ds'); e.add_argument('--epoques', type=int, default=30)
     c = sub.add_parser('controler'); c.add_argument('modele')
     b = sub.add_parser('boucle'); b.add_argument('dossiers', nargs='+'); b.add_argument('--tours', type=int, default=3)
-    b.add_argument('--epoques', type=int, default=20)
+    b.add_argument('--epoques', type=int, default=20); b.add_argument('--debut', type=int, default=1)
+    b.add_argument('--depuis-meilleur', action='store_true', help='affiner le meilleur modèle au lieu de repartir de yolo11s')
+    b.add_argument('--conf-min', type=float, default=0.55, help='confiance minimale des ballons « sûrs »')
     a = ap.parse_args()
     os.chdir(HERE)
     if a.cmd == 'donnees':
@@ -240,7 +242,7 @@ def main():
         r = controler(a.modele)
         print(r, 'score', score(r))
     else:
-        boucle(a.dossiers, a.tours, a.epoques)
+        boucle(a.dossiers, a.tours, a.epoques, debut=a.debut, depuis_meilleur=a.depuis_meilleur, conf_min=a.conf_min)
 
 
 if __name__ == '__main__':

@@ -251,9 +251,16 @@ def reballon(dossier, sortie, modele='modeles/ballon_club.pt', conf=0.1):
                 pos += 1
             ok, img = cap.read()
             pos += 1
-            if not ok:
-                break
-            B = sr.ballons_foot(m, img, conf=conf, device=0, half=True)
+            if not ok or img is None:                  # incident de lecture : on rouvre la vidéo et on réessaie une fois
+                cap = cv2.VideoCapture(src['video'])
+                cap.set(cv2.CAP_PROP_POS_FRAMES, k)
+                ok, img = cap.read()
+                pos = k + 1
+            try:
+                B = sr.ballons_foot(m, img, conf=conf, device=0, half=True) if ok and img is not None else []
+            except Exception as err:                   # 23 nov. : une erreur de lecture a fait planter toute la boucle
+                print('  image %.1f s illisible (%s) : ballon vide' % (f['t'], err))
+                B = []
             out.write(json.dumps(dict(f, balls=[[round(b[0], 1), round(b[1], 1), round(b[2], 3)] for b in B])) + '\n')
             if n % 200 == 0:
                 out.flush()
