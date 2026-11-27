@@ -71,6 +71,7 @@ FC.input = (function () {
     if (S.prov || S.pending) { drop(); return; }
     FC.store.undo(); onUpdate();
   }
+  function redo() { commit(); S.pending = null; FC.store.redo(); onUpdate(); }   // un geste en cours est validé (et vide alors « Rétablir »)
   // Espace : appui bref = Nous (validé au relâchement), maintenu holdMs = Eux (validé dès le seuil).
   // Un 2e appui proche d'un geste en attente = double appui (ratée / cadrée), traité tout de suite.
   function clearSpace() { if (S.space) { clearTimeout(S.space.timer); S.space = null; } }
@@ -106,6 +107,7 @@ FC.input = (function () {
       if (!enabled || typing(e)) return;
       const k = e.key.toLowerCase();
       if (e.key === 'Alt') e.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
       if (k === ' ') { e.preventDefault(); if (!e.repeat) spaceDown(e); return; }
       if (k === K.annuler) { e.preventDefault(); drop(); return; }
@@ -124,7 +126,7 @@ FC.input = (function () {
   }
 
   return {
-    init: init, state: function () { return S; }, undo: undo, cancel: drop,
+    init: init, state: function () { return S; }, undo: undo, redo: redo, cancel: drop,
     setEnabled: function (v) { enabled = v; if (!v) { S.down.clear(); drop(); } },
     _press: press, _quick: quick, _goal: goal, _spaceDown: spaceDown, _spaceUp: spaceUp                        // exposés pour les tests
   };

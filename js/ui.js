@@ -1,7 +1,7 @@
 /* UI : onglets, panneau live, filtres d'analyse, tableaux. */
 FC.ui = (function () {
   const C = FC.CONFIG, $ = function (id) { return document.getElementById(id); };
-  let view = 'live', armedDel = null, armedTimer = null, armedZero = null;
+  let view = 'live', armedDel = null, armedTimer = null, armedZero = null, armedHalf = null;
   const VIEWS = ['live', 'analysis', 'bilan', 'video', 'matches'];
 
   function el(tag, cls, html) {
@@ -115,7 +115,12 @@ FC.ui = (function () {
     const m = FC.store.meta(), ev = FC.store.all();
     $('count').textContent = ev.length + ' événement' + (ev.length > 1 ? 's' : '');
     $('half').textContent = m.half === 1 ? '1re mi-temps' : '2e mi-temps';
-    $('btn-half').disabled = m.half === 2;
+    if (!armedHalf) {
+      const bh = $('btn-half'); bh.classList.remove('danger');
+      bh.textContent = m.half === 1 ? 'Mi-temps' : '↶ 1re mi-temps';
+      bh.title = m.half === 1 ? 'Passer en 2e mi-temps (chrono à 45:00, changement de côté)' : 'Revenir en 1re mi-temps (si Mi-temps a été cliqué par erreur)';
+    }
+    $('btn-redo').disabled = !FC.store.canRedo();
     $('dir').textContent = 'Nous attaquons vers ' + (m.flip ? 'la gauche' : 'la droite');
     const list = $('recent'); list.innerHTML = '';
     ev.slice(-8).reverse().forEach(function (e) {
@@ -367,12 +372,36 @@ FC.ui = (function () {
     $('btn-bilan-copy').onclick = function () { copy(bilanText(), 'Bilan'); };
     $('btn-clock').onclick = function () { FC.clock.toggle(); FC.store.setMeta({ elapsed: FC.clock.now() }); tick(); };
     $('btn-half').onclick = function () {
-      if (FC.store.all().length) FC.backup.snap(FC.store.current(), 'mi-temps');
-      FC.clock.pause(); FC.clock.set(C.halfStartMs);
-      FC.store.setMeta({ half: 2, elapsed: C.halfStartMs, flip: true }); tick();
+      const m = FC.store.meta(), b = $('btn-half');
+      if (m.half === 1) {                               // passage en 2e : on change de côté (quel que soit le sens de la 1re)
+        if (FC.store.all().length) FC.backup.snap(FC.store.current(), 'mi-temps');
+        const h1End = FC.clock.now();
+        FC.input.cancel(); FC.clock.pause(); FC.clock.set(C.halfStartMs);
+        FC.store.setMeta({ half: 2, elapsed: C.halfStartMs, flip: !m.flip, h1End: h1End }); tick();
+        return;
+      }
+      // Retour en 1re mi-temps (clic par erreur) : confirmation en 2 clics, point de sauvegarde avant.
+      if (!armedHalf) {
+        b.textContent = 'Confirmer ? (retour 1re)'; b.classList.add('danger');
+        armedHalf = setTimeout(function () { armedHalf = null; renderSide(); }, 3500);
+        return;
+      }
+      clearTimeout(armedHalf); armedHalf = null;
+      FC.input.cancel();
+      const ev = FC.store.all(), h1 = ev.filter(function (e) { return e.half === 1; });
+      const base = m.h1End != null ? m.h1End : h1.reduce(function (a, e) { return Math.max(a, e.t || 0); }, 0);
+      const shift = function (t) { return base + Math.max(0, (t || 0) - C.halfStartMs); };
+      if (ev.length) FC.backup.snap(FC.store.current(), 'avant retour en 1re mi-temps');
+      const now = shift(FC.clock.now()), running = FC.clock.isRunning();
+      FC.store.edit(function (mt) {                     // les actions codées « en 2e » passent en 1re, à la suite
+        mt.events.forEach(function (e) { if (e.half === 2) { e.half = 1; e.t = shift(e.t); } });
+      });
+      FC.clock.pause(); FC.clock.set(now); if (running) FC.clock.start();
+      FC.store.setMeta({ half: 1, elapsed: now, flip: !m.flip, h1End: null }); tick(); flash('Retour en 1re mi-temps');
     };
     $('btn-flip').onclick = function () { FC.store.setMeta({ flip: !FC.store.meta().flip }); };
     $('btn-undo').onclick = function () { FC.input.undo(); };
+    $('btn-redo').onclick = function () { FC.input.redo(); };
     $('btn-json').onclick = function () { copy(FC.store.toJSON(), 'JSON'); };
     $('btn-csv').onclick = function () { copy(FC.store.toCSV(), 'CSV'); };
     $('btn-reset').onclick = function () { FC.store.newMatch(); flash('Nouveau match'); };
@@ -410,7 +439,8 @@ FC.ui = (function () {
       ['F + Espace', 'coup de pied arrêté (corner, coup franc, touche selon l\'endroit)'],
       ['Chrono', 'démarre tout seul au 1er geste de chaque mi-temps'],
       ['Échap', 'annule le geste en cours'],
-      ['Ctrl + Z', 'annule le dernier événement']
+      ['Ctrl + Z', 'annule le dernier événement'],
+      ['Ctrl + Y', 'rétablit l\'événement annulé']
     ];
     $('legend').innerHTML = rows.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('');
   }

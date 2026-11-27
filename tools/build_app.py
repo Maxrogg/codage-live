@@ -63,7 +63,7 @@ h = hashlib.sha256(b''.join(open(f'{OUT}/{p}', 'rb').read() for p in files)).hex
 open(f'{OUT}/sw.js', 'w').write(f"""/* Service worker : met tous les fichiers en cache pour fonctionner hors ligne. Version {h}. */
 const V = 'codage-live-{h}';
 const FILES = {json.dumps(['./'] + files)};
-self.addEventListener('install', function (e) {{ e.waitUntil(caches.open(V).then(function (c) {{ return c.addAll(FILES); }}).then(function () {{ return self.skipWaiting(); }})); }});
+self.addEventListener('install', function (e) {{ e.waitUntil(caches.open(V).then(function (c) {{ return c.addAll(FILES.map(function (f) {{ return new Request(f, {{ cache: 'reload' }}); }})); }}).then(function () {{ return self.skipWaiting(); }})); }});
 self.addEventListener('activate', function (e) {{
   e.waitUntil(caches.keys().then(function (ks) {{ return Promise.all(ks.filter(function (k) {{ return k !== V; }}).map(function (k) {{ return caches.delete(k); }})); }}).then(function () {{ return self.clients.claim(); }}));
 }});

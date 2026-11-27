@@ -5,7 +5,7 @@
 FC.store = (function () {
   const IDX = 'fc2-index', MK = 'fc2-m-', OLD = 'fc-live-v1';
   const matches = {};
-  let cur = null;
+  let cur = null, redo = [];                            // redo : événements retirés par Ctrl+Z (pour « Rétablir »)
   const subs = [], libSubs = [], saveSubs = [], delSubs = [], switchSubs = [], storageSubs = [];
 
   function today() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }  // date locale (pas UTC)
@@ -65,7 +65,7 @@ FC.store = (function () {
   function select(id) {
     const old = m();                                      // on quitte un match : son chrono est figé
     if (old && old.meta.running) { old.meta.elapsed = FC.clock.now(); old.meta.running = false; old.meta.wallAt = Date.now(); saveLocal(old); }
-    cur = id; saveIndex();
+    cur = id; redo = []; saveIndex();
     switchSubs.forEach(function (f) { f(m()); });
     emit();
   }
@@ -111,15 +111,23 @@ FC.store = (function () {
       ev.id = ++mt.seq; ev.half = mt.meta.half;
       if (ev.t == null) ev.t = FC.clock.now();
       mt.meta.elapsed = FC.clock.now(); stampClock(mt);
-      mt.events.push(ev); touch(mt); if (FC.backup) FC.backup.tick(mt); emit(); return ev;
+      mt.events.push(ev); redo = []; touch(mt); if (FC.backup) FC.backup.tick(mt); emit(); return ev;
     },
     patchLast: function (fn) { const mt = m(), e = mt.events[mt.events.length - 1]; if (e) { fn(e); touch(mt); emit(); } return e; },
-    undo: function () { const mt = m(), e = mt.events.pop(); touch(mt); emit(); return e; },
+    undo: function () { const mt = m(), e = mt.events.pop(); if (e) redo.push(e); touch(mt); emit(); return e; },
+    // Rétablir : remet le dernier événement annulé tel quel (même id, mi-temps, temps).
+    redo: function () {
+      const mt = m(), e = redo.pop(); if (!e) return null;
+      mt.events.push(e); mt.seq = Math.max(mt.seq, e.id || 0); touch(mt); emit(); return e;
+    },
+    canRedo: function () { return redo.length; },
+    // Modifie plusieurs événements d'un coup (fn reçoit le match). Prendre un point de sauvegarde avant si c'est destructif.
+    edit: function (fn) { const mt = m(); fn(mt); redo = []; touch(mt); emit(); },
     setMeta: function (patch) { const mt = m(); Object.assign(mt.meta, patch); if ('elapsed' in patch) stampClock(mt); touch(mt); emit(); },
     setInfo: function (patch) { const mt = m(); Object.assign(mt.info, patch); touch(mt); libSubs.forEach(function (f) { f(); }); },
     clear: function () {                                // vide le match courant (tests)
       const mt = m(); if (FC.backup && mt.events.length) FC.backup.snap(mt, 'avant remise à zéro');
-      mt.events = []; mt.seq = 0; mt.meta = { half: 1, elapsed: 0, flip: false, running: false }; touch(mt); emit();
+      mt.events = []; mt.seq = 0; redo = []; mt.meta = { half: 1, elapsed: 0, flip: false, running: false }; touch(mt); emit();
     },
 
     // --- bibliothèque ---
@@ -145,7 +153,7 @@ FC.store = (function () {
     },
     importMatch: function (obj) {                       // match venu du cloud (plus récent que le local)
       const mt = norm(obj); matches[mt.id] = mt; saveLocal(mt);
-      if (mt.id === cur) { switchSubs.forEach(function (f) { f(mt); }); }
+      if (mt.id === cur) { redo = []; switchSubs.forEach(function (f) { f(mt); }); }
       emit();
     },
 
@@ -169,7 +177,7 @@ FC.store = (function () {
         if (old && FC.backup && old.events.length) FC.backup.snap(old, 'avant import');
         old ? updated++ : added++;
         matches[mt.id] = mt; saveLocal(mt); saveSubs.forEach(function (f) { f(mt); });
-        if (mt.id === cur) switchSubs.forEach(function (f) { f(mt); });
+        if (mt.id === cur) { redo = []; switchSubs.forEach(function (f) { f(mt); }); }
       });
       saveIndex(); emit();
       return { added: added, updated: updated, total: list.length };
