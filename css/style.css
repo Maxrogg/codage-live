@@ -261,3 +261,5 @@ details.howto > p { margin: 10px 0 0; padding: 0 2px; }
 .dr-bar button.on { background: var(--turf); color: var(--yellow); }
 .dr-bar button.sw { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); border: 2px solid var(--rule); }
 .dr-bar button.sw.on { outline: 3px solid var(--ink); outline-offset: 1px; background: var(--c); }
+/* Grand écran : la colonne de droite défile toute seule, le terrain reste à l'écran (un clic en bas de la colonne ne le fait plus sortir) */
+@media (min-width: 1001px) { #view-live > aside { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; } }

@@ -107,6 +107,13 @@ FC.input = (function () {
     });
     cv.addEventListener('mousemove', function (e) { S.mouse = point(e); if (S.pending) onUpdate(); });
     cv.addEventListener('mouseleave', function () { S.mouse = null; if (S.pending) onUpdate(); });
+    // Curseur de retour sur le terrain après avoir tapé le nom de l'adversaire, le score ou choisi la durée :
+    // on quitte le champ (ce qui est tapé est gardé), sinon les Espace iraient dans le champ au lieu de coder.
+    // Pas la case de note (N) : on la ferme avec Entrée / Échap.
+    cv.addEventListener('mouseenter', function () {
+      const a = document.activeElement;
+      if (a && a.id !== 'note-in' && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) { a.blur(); window.focus(); }
+    });
 
     document.addEventListener('keydown', function (e) {
       if (!enabled || typing(e)) return;
