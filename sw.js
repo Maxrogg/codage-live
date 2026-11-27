@@ -1,6 +1,6 @@
-/* Service worker : met tous les fichiers en cache pour fonctionner hors ligne. Version 3602094a5c. */
-const V = 'codage-live-3602094a5c';
-const FILES = ["./", "AGENTS.md", "css/style.css", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "index.html", "js/backup.js", "js/chart.js", "js/clock.js", "js/config.js", "js/events.js", "js/input.js", "js/momentum.js", "js/pitch.js", "js/pwa.js", "js/stats.js", "js/sync.js", "js/ui.js", "js/video.js", "js/viz.js", "manifest.webmanifest"];
+/* Service worker : met tous les fichiers en cache pour fonctionner hors ligne. Version f0a9eba5ad. */
+const V = 'codage-live-f0a9eba5ad';
+const FILES = ["./", "AGENTS.md", "css/style.css", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "index.html", "js/backup.js", "js/chart.js", "js/clock.js", "js/config.js", "js/dessin.js", "js/events.js", "js/input.js", "js/momentum.js", "js/pitch.js", "js/pwa.js", "js/stats.js", "js/sync.js", "js/ui.js", "js/video.js", "js/viz.js", "manifest.webmanifest"];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(V).then(function (c) { return c.addAll(FILES.map(function (f) { return new Request(f, { cache: 'reload' }); })); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== V; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));

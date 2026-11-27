@@ -552,6 +552,7 @@ FC.ui = (function () {
     FC.input.init($('live'), function () { renderLive(); });
     FC.store.onChange(function () { renderSide(); renderLive(); renderAnalysis(); renderBilan(); FC.video.render(); fillMatchCard(false); });
     FC.video.init({ describe: describe, flash: flash, save: save });
+    FC.dessin.init();
     FC.store.onLib(function () { renderMatches(); fillMatchCard(false); });
     FC.store.onSwitch(function (mt) {
       FC.input.cancel(); FC.clock.pause(); FC.clock.set(mt.meta.elapsed || 0); tick(); fillMatchCard(true);

@@ -251,3 +251,13 @@ details.howto > p { margin: 10px 0 0; padding: 0 2px; }
 .note-box b { font: 600 16px/1 var(--display); font-variant-numeric: tabular-nums; }
 .note-box input { flex: 1; font-size: 16px; padding: 6px 10px; }
 .recent li.nt, .vd-list li.nt { border-left-color: var(--yellow); font-style: italic; }
+/* Dessin sur la vidéo */
+.vd-stage { position: relative; background: #000; border-radius: 10px; }
+.vd-stage #dr-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+.vd-stage.drawing #dr-canvas { pointer-events: auto; cursor: crosshair; }
+.vd-stage:fullscreen { display: flex; align-items: center; justify-content: center; border-radius: 0; }
+.vd-stage:fullscreen #vd { max-height: 100vh; height: 100%; border-radius: 0; }
+.dr-bar { align-items: center; flex-wrap: wrap; }
+.dr-bar button.on { background: var(--turf); color: var(--yellow); }
+.dr-bar button.sw { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); border: 2px solid var(--rule); }
+.dr-bar button.sw.on { outline: 3px solid var(--ink); outline-offset: 1px; background: var(--c); }

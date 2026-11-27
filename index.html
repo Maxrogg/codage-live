@@ -148,10 +148,18 @@
         <input id="vd-input" type="file" accept="video/*" hidden>
         <span id="vd-file" class="sub"></span>
       </div>
-      <video id="vd" controls preload="metadata"></video>
+      <div id="vd-stage" class="vd-stage"><video id="vd" controls preload="metadata"></video><canvas id="dr-canvas"></canvas></div>
+      <div id="dr-bar" class="row dr-bar" hidden>
+        <span class="sub">Glisse sur l'image :</span>
+        <button data-tool="arrow">➜ Flèche</button><button data-tool="dash">⇢ Course (pointillé)</button><button data-tool="line">— Trait</button><button data-tool="circle">◯ Cercle</button>
+        <button data-color="jaune" class="sw" style="--c:#ffd21f" title="Jaune"></button><button data-color="rouge" class="sw" style="--c:#ff3b3b" title="Rouge"></button><button data-color="bleu" class="sw" style="--c:#3d8ce8" title="Bleu"></button><button data-color="blanc" class="sw" style="--c:#ffffff" title="Blanc"></button>
+        <button data-act="undo">↶ Retirer le dernier</button><button data-act="clear">Tout effacer</button>
+      </div>
       <div class="row">
         <button id="vd-prev" title="Action précédente (J)">◀ Précédente</button>
         <button id="vd-next" title="Action suivante (K)">Suivante ▶</button>
+        <button id="dr-toggle" title="Met la vidéo en pause et permet de tracer flèches, courses et cercles (rien n'est enregistré)">✎ Dessiner</button>
+        <button id="dr-full" title="Plein écran avec les dessins (pour montrer aux joueurs)">⛶ Plein écran</button>
         <button id="vd-chain" title="Lit à la suite toutes les actions de la liste (filtre et équipe choisis), 4 s avant à 5 s après chacune">▶▶ Enchaîner la sélection</button>
         <span class="sub"><kbd>J</kbd> / <kbd>K</kbd> action précédente / suivante · <kbd>L</kbd> lecture / pause. La vidéo démarre 4 s avant l'action. « Enchaîner » passe toute la liste filtrée, comme une playlist.</span>
       </div>
@@ -208,6 +216,7 @@
 <script src="js/sync.js"></script>
 <script src="js/input.js"></script>
 <script src="js/video.js"></script>
+<script src="js/dessin.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/pwa.js"></script>
 <script>FC.ui.init();</script>
