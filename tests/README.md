@@ -1,5 +1,13 @@
 # Tests (pour Claude)
 
+## Sous Windows (ou tout PC) : `node tests/lancer.js`
+Lance les tests sans toucher aux fichiers : les chemins Linux sont remplacés à la volée. Il faut une fois
+`npm install playwright-core` dans `../codage-outils` (à côté du dépôt) ; Chrome ou Edge installé est utilisé.
+- `node tests/lancer.js` : tous les tests courants · `node tests/lancer.js -v keys zero` : ceux-là, avec leur sortie à relire
+  (beaucoup de tests navigateur affichent des chiffres sans vérifier eux-mêmes : « OK » = pas d'erreur).
+- `video` : `VID=<chemin>/test.mp4 node tests/lancer.js video` (vidéo à fabriquer avec la commande ffmpeg en tête de `video.js`).
+- `saisie2.js` : Rétablir, mi-temps (côté, retour en 1re, 40 / 45 min, tranches), ⇄ / ✕, notes (N), onglet Vidéo.
+
 Scripts Node / Playwright. Ils lisent l'application dans `/home/claude/codage-live` : copier d'abord le dépôt à cet endroit
 (`cp -r . /home/claude/codage-live`) ou changer le chemin en tête de fichier.
 

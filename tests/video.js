@@ -50,7 +50,7 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'ÉCHEC ') + m); if (!c) proce
   const ex = await p.evaluate(() => FC.video.exportObj());
   ok(ex.actions.length === 4 && ex.actions[1].video_s === 81 && ex.actions[3].video_s === 140, 'export : temps vidéo des actions ' + ex.actions.map(a => a.video_s).join(', '));
   const csv = await p.evaluate(() => FC.store.toCSV());
-  ok(csv.split('\n')[0].endsWith('video_s') && csv.split('\n')[2].endsWith(',81'), 'CSV : colonne video_s');
+  ok(csv.split('\n')[0].endsWith('video_s,note') && csv.split('\n')[2].endsWith(',81,'), 'CSV : colonne video_s (puis note)');
   await p.screenshot({ path: '/home/claude/work/video_tab.png' });
   // rechargement : calage gardé, fichier à rouvrir
   await p.reload(); await p.waitForTimeout(300); await p.click('#tab-video'); await p.waitForTimeout(200);
