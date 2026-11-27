@@ -5,6 +5,7 @@
 FC.video = (function () {
   const C = FC.CONFIG, $ = function (id) { return document.getElementById(id); };
   const LEAD = 4;                                      // s : on démarre un peu avant l'action pour voir la mise en place
+  const TAIL = 5;                                      // s : en lecture enchaînée, on regarde la suite de l'action avant de passer à la suivante
   const FILTERS = {
     all:    { label: 'Tout',          f: function () { return true; } },
     deseq:  { label: 'Déséquilibres', f: function (e) { return C.deseqKinds.indexOf(e.kind) >= 0; } },
@@ -15,6 +16,7 @@ FC.video = (function () {
     pass:   { label: 'Passes',        f: function (e) { return e.kind === 'pass'; } }
   };
   let filter = 'all', team = 'N', sel = null, fileName = '', url = null, describe = null, flash = function () {};
+  let chain = false;                                   // lecture enchaînée de la sélection (comme une playlist)
 
   function vmeta() { return FC.store.meta().video || {}; }
   function setV(patch) { FC.store.setMeta({ video: Object.assign({}, vmeta(), patch) }); }
@@ -47,6 +49,30 @@ FC.video = (function () {
     let i = l.findIndex(function (e) { return e.id === sel; });
     i = i < 0 ? (d > 0 ? 0 : l.length - 1) : Math.min(l.length - 1, Math.max(0, i + d));
     seek(l[i]);
+  }
+  // Lecture enchaînée : chaque action de la liste filtrée, de LEAD s avant à TAIL s après, puis la suivante.
+  // Deux actions proches s'enchaînent sans retour en arrière. Les actions de mi-temps non calées sont sautées.
+  function playable() { const v = vmeta(); return list().filter(function (e) { return vt(e, v) != null; }); }
+  function setChain(on) {
+    const p = player();
+    if (on) {
+      if (!p.src) { flash('Ouvre d\'abord le fichier vidéo'); return; }
+      const l = playable(); if (!l.length) { flash('Aucune action calée pour ce filtre'); return; }
+      chain = true;
+      const cur = l.filter(function (e) { return e.id === sel; })[0];
+      seek(cur || l[0]); flash('Lecture enchaînée : ' + l.length + ' action' + (l.length > 1 ? 's' : ''));
+    } else { chain = false; render(); }
+  }
+  function onTime() {
+    if (!chain) return;
+    const p = player(), l = playable(), v = vmeta();
+    const i = l.findIndex(function (e) { return e.id === sel; });
+    if (i < 0) { setChain(false); return; }
+    if (p.currentTime < vt(l[i], v) + TAIL) return;
+    const nx = l[i + 1];
+    if (!nx) { p.pause(); chain = false; flash('Fin de la sélection'); render(); return; }
+    if (vt(nx, v) - LEAD <= p.currentTime) { sel = nx.id; render(); }   // action suivante déjà en cours : on continue sans couper
+    else seek(nx);
   }
   // « C'est ici » : l'action sélectionnée se passe à l'instant affiché par le lecteur → on en déduit le calage de sa mi-temps.
   function syncOnSelected() {
@@ -109,6 +135,7 @@ FC.video = (function () {
     renderSync(); renderList(); renderMini();
     Array.prototype.forEach.call($('vd-filters').children, function (b) { b.classList.toggle('on', b.dataset.k === filter); });
     Array.prototype.forEach.call($('vd-team').children, function (b) { b.classList.toggle('on', b.dataset.k === team); });
+    const cb = $('vd-chain'); cb.textContent = chain ? '■ Arrêter l\'enchaînement' : '▶▶ Enchaîner la sélection'; cb.classList.toggle('pri', !chain);
   }
 
   function init(opts) {
@@ -134,6 +161,8 @@ FC.video = (function () {
     $('vd-m2').onclick = function () { nudge(2, -1); }; $('vd-p2').onclick = function () { nudge(2, 1); };
     $('vd-prev').onclick = function () { step(-1); };
     $('vd-next').onclick = function () { step(1); };
+    $('vd-chain').onclick = function () { setChain(!chain); };
+    player().addEventListener('timeupdate', onTime);
     $('vd-export').onclick = function () {
       const i = FC.store.info();
       opts.save('actions_video_' + (i.date || '') + '_' + ((i.adv || 'adversaire').replace(/[^\w-]+/g, '_')) + '.json', JSON.stringify(exportObj(), null, 1), 'Export');
