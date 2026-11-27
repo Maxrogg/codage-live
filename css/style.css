@@ -49,7 +49,8 @@ header .sub { color: var(--chalk2); }
 header button.ghost { background: transparent; border-color: var(--yellow); color: var(--yellow); padding: 5px 12px; font-weight: 600; }
 header button.ghost:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
 header #count { margin-left: auto; font-variant-numeric: tabular-nums; padding-right: 14px; border-right: 1px solid rgba(255, 255, 255, .16); }
-.flash { opacity: 0; transition: opacity .2s; font-size: 12px; color: var(--chalk); background: rgba(255, 255, 255, .14); padding: 3px 10px; border-radius: 99px; }
+/* Message bref : en bas au centre, toujours visible (même pendant la saisie, même sur petit écran). */
+.flash { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 50; pointer-events: none; opacity: 0; transition: opacity .2s; font: 600 15px/1.3 var(--display); color: var(--yellow-ink); background: var(--yellow); padding: 8px 18px; border-radius: 99px; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .5); max-width: calc(100vw - 32px); }
 .flash:empty { display: none; }
 .flash.on { opacity: 1; }
 .save { font-size: 12px; } header .save.err { color: #ffb4b4; font-weight: 600; }
@@ -187,7 +188,8 @@ table.cmp tr.grp td { color: var(--ink); font: 600 14px var(--display); backgrou
   .bilan, #view-bilan { grid-template-columns: 1fr; }
   .maps { --cols: 1 !important; }
   .maps.dense { --cols: 2 !important; } .maps.two { --cols: 1; }
-  header { gap: 12px; padding: 0 12px; overflow-x: auto; }
+  header { gap: 6px 12px; padding: 6px 12px; height: auto; flex-wrap: wrap; }
+  header nav { order: 3; width: 100%; overflow-x: auto; } header nav button.tab { padding: 10px 12px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 

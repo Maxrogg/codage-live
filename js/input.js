@@ -12,6 +12,8 @@ FC.input = (function () {
     const r = canvas.getBoundingClientRect();
     return FC.pitch.toField(canvas._g, e.clientX - r.left, e.clientY - r.top, flip());
   }
+  function warn(msg) { if (FC.ui && FC.ui.flash) FC.ui.flash(msg); }   // une touche qui ne fait rien : on le dit
+  const OFF = 'Curseur hors du terrain : rien de posé';
   function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
 
   // Premier geste d'une mi-temps : le chrono démarre tout seul.
@@ -59,12 +61,14 @@ FC.input = (function () {
 
   // Z / E : un seul appui, au curseur. Récup de Nous (reflet = perte d'Eux) ou perte de Nous (reflet = récup d'Eux).
   function quick(kind) {
-    if (!S.mouse) return;
+    if (!S.mouse) { warn(OFF); return; }
     add({ kind: kind, team: 'N', x: S.mouse[0], y: S.mouse[1] });
   }
   function goal() {                                   // touche C : la dernière frappe était un but
     if (S.prov && S.prov.ev.kind === 'shot') { S.prov.ev.res = 'but'; commit(); return; }
-    FC.store.patchLast(function (e) { if (e.kind === 'shot') e.res = 'but'; });
+    const all = FC.store.all(), last = all[all.length - 1];
+    if (!last || last.kind !== 'shot') { warn('C = but : code d’abord la frappe (R + Espace)'); return; }
+    FC.store.patchLast(function (e) { e.res = 'but'; });
     onUpdate();
   }
   function undo() {
@@ -76,7 +80,8 @@ FC.input = (function () {
   // Un 2e appui proche d'un geste en attente = double appui (ratée / cadrée), traité tout de suite.
   function clearSpace() { if (S.space) { clearTimeout(S.space.timer); S.space = null; } }
   function spaceDown(e) {
-    if (!enabled || !S.mouse) return;
+    if (!enabled) return;
+    if (!S.mouse) { warn(OFF); return; }
     const p = S.mouse, snap = { ctrlKey: e.ctrlKey, shiftKey: e.shiftKey };
     clearSpace();
     if (S.prov && dist(p, S.prov.at) <= C.dblDist) { press(snap, 'N', p); return; }

@@ -528,5 +528,5 @@ FC.ui = (function () {
     updateChip();
     FC.sync.init();
   }
-  return { init: init, refresh: refresh };
+  return { init: init, refresh: refresh, flash: flash };
 })();
