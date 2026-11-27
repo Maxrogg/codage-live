@@ -36,8 +36,8 @@ FC.CONFIG = {
   deseqKinds: ['pass_deseq', 'carry_deseq'],
   shotResults: { cadre: 'Cadrée', hors: 'Non cadrée', but: 'But' },
   halfStartMs: 45 * 60000,                 // chrono au début de la 2e mi-temps pour les anciens matchs (sans durée enregistrée)
-  halfMinDefault: 35,                      // durée d'une mi-temps (min) pour un nouveau match (U14 : 2 x 35) ; réglable dans la carte Match
-  halfMinChoices: [20, 25, 30, 35, 40, 45],
+  halfMinDefault: 45,                      // durée d'une mi-temps (min) pour un nouveau match ; 40 ou 45 selon le match, réglable dans la carte Match
+  halfMinChoices: [40, 45],
   zones: { cols: 4, lanes: 5, laneLabels: ['ext. gauche', 'int. gauche', 'axe', 'int. droit', 'ext. droit'] },
   heat: { cell: 2, sigma: 5, minRef: 2.5, shrink: 5, volPow: 0.7, volMin: 0.08 },
   originMs: 15000,                         // fenêtre « origine d'une frappe » (avec chrono)
