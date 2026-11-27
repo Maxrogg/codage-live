@@ -18,6 +18,7 @@ FC.stats = (function () {
   function select(events, team, half) {
     return events.filter(function (e) { return (!team || e.team === team) && (!half || e.half === half); });
   }
+  function pl(n, one, many) { return n > 1 ? (many || one + 's') : one; }   // accord : 0 ou 1 = singulier
   function pct(a, b) { return b ? Math.round(100 * a / b) : null; }
 
   // Une action à deux points ratée (passe, conduite) = perte pour son équipe ET récupération pour l'adversaire,
@@ -121,9 +122,18 @@ FC.stats = (function () {
              lost: ev.filter(function (e) { return e.kind === 'perte' && e.team === 'N'; }) };
   }
 
-  // Courbe par tranches de 15 min (nécessite le chrono).
-  function timeline(events, metric, half) {
-    const b = C.timeBuckets.map(function () { return { N: 0, E: 0 }; });
+  // Courbe par tranches de 15 min (nécessite le chrono), découpées DANS chaque mi-temps : une tranche ne mélange jamais
+  // la fin de la 1re et le début de la 2e. h2ms = chrono au début de la 2e (= durée d'une mi-temps, défaut 45 min).
+  // Le temps additionnel va dans la dernière tranche de sa mi-temps. buckets = [{ label, half, N, E }].
+  function timeline(events, metric, half, h2ms) {
+    const H = h2ms || C.halfStartMs, SL = 900000, per = Math.ceil(H / SL), b = [];
+    [1, 2].forEach(function (h) {
+      if (half && half !== h) return;
+      for (let i = 0; i < per; i++) {
+        const a = (h === 2 ? H : 0) + i * SL, z = Math.min(a + SL, (h === 2 ? 2 * H : H));
+        b.push({ label: Math.round(a / 60000) + '–' + Math.round(z / 60000), half: h, i: i, N: 0, E: 0 });
+      }
+    });
     let list = metric === 'perte' || metric === 'recup' ? withDerived(events) : events;
     list = list.filter(function (e) {
       if (half && e.half !== half) return false;
@@ -131,7 +141,10 @@ FC.stats = (function () {
       if (metric === 'shots') return e.kind === 'shot';
       return e.kind === metric;
     });
-    list.forEach(function (e) { b[Math.min(b.length - 1, Math.floor((e.t || 0) / 900000))][e.team]++; });
+    list.forEach(function (e) {
+      const h = e.half === 2 ? 2 : 1, i = Math.max(0, Math.min(per - 1, Math.floor(((e.t || 0) - (h === 2 ? H : 0)) / SL)));
+      const k = b.filter(function (x) { return x.half === h && x.i === i; })[0]; if (k) k[e.team]++;
+    });
     return { buckets: b, hasClock: events.some(function (e) { return e.t > 0; }) };
   }
 
@@ -248,15 +261,15 @@ FC.stats = (function () {
       });
     });
     if (worst && worst.r >= 0.35) push('warn', 'Zone à risque : ' + cellName(worst.l, worst.c) + ' (' + lose[worst.l][worst.c] + ' pertes pour ' + play[worst.l][worst.c] + ' passes).');
-    if (safe) push('good', 'Zone sûre et très jouée : ' + cellName(safe.l, safe.c) + ' (' + play[safe.l][safe.c] + ' passes, ' + lose[safe.l][safe.c] + ' perte(s)).');
+    if (safe) push('good', 'Zone sûre et très jouée : ' + cellName(safe.l, safe.c) + ' (' + play[safe.l][safe.c] + ' passes, ' + lose[safe.l][safe.c] + ' ' + pl(lose[safe.l][safe.c], 'perte') + ').');
 
     const rec = sum.recup;
     if (rec.n >= 3) push(rec.haute * 100 >= rec.n * 30 ? 'good' : 'info', rec.n + ' récupérations, dont ' + rec.haute + ' dans le camp adverse.');
     const ds = select(events, t, half).filter(function (e) { return DESEQ.indexOf(e.kind) >= 0 && e.ok; });
     if (ds.length >= 3) { const s = sides(ds, t, 'to'); push('info', ds.length + ' déséquilibres réussis, arrivées : gauche ' + s[0] + '% · axe ' + s[1] + '% · droite ' + s[2] + '%.'); }
-    else if (ds.length) push('info', ds.length + ' déséquilibre(s) réussi(s).');
+    else if (ds.length) push('info', ds.length + ' ' + pl(ds.length, 'déséquilibre réussi', 'déséquilibres réussis') + '.');
     if (sum.shots.n) {
-      push('info', sum.shots.n + ' frappe(s), ' + (sum.shots.cadre + sum.shots.but) + ' cadrée(s), ' + sum.shots.but + ' but(s), ' + sum.shots.surface + ' dans la surface.');
+      push('info', sum.shots.n + ' ' + pl(sum.shots.n, 'frappe') + ', ' + (sum.shots.cadre + sum.shots.but) + ' ' + pl(sum.shots.cadre + sum.shots.but, 'cadrée') + ' (buts compris), ' + sum.shots.but + ' ' + pl(sum.shots.but, 'but') + ', ' + sum.shots.surface + ' dans la surface.');
       if (sum.shots.n >= 3 && sum.shots.eff != null) push('info', 'Efficacité (buts ÷ frappes) : ' + sum.shots.eff + '%.');
       const o = shotOrigins(events, t, half);
       if (o.n >= 2) {
@@ -266,7 +279,7 @@ FC.stats = (function () {
           : 'Origine de leurs frappes : au moins ' + o.transition + '/' + o.n + ' viennent d\'une de nos pertes ou d\'une de leurs récups (≤ ' + (C.originMs / 1000) + ' s), ' + o.deseq + ' après un déséquilibre' + (o.cpa ? ', ' + o.cpa + ' sur CPA' : '') + '.');
       }
     }
-    if (sum.entrees.tiers || sum.entrees.surf) push('info', sum.entrees.tiers + ' entrée(s) dans le dernier tiers, ' + sum.entrees.surf + ' dans la surface.');
+    if (sum.entrees.tiers || sum.entrees.surf) push('info', sum.entrees.tiers + ' ' + pl(sum.entrees.tiers, 'entrée') + ' dans le dernier tiers, ' + sum.entrees.surf + ' dans la surface.');
     if (!nous && out.length === 0) push('info', 'Pas encore de données sur eux.');
     return out;
   }

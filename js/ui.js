@@ -302,14 +302,12 @@ FC.ui = (function () {
     $('mo-rule').textContent = 'Points : entrée dans la surface ' + M.entSurf + ' (sinon dernier tiers ' + M.entTiers + '), frappe ' + M.shot + ' (+' + M.shotOn + ' cadrée, +' + M.goal + ' but ; ×' + M.shotCol[3] + ' dans le dernier quart), déséquilibre réussi ' + M.deseq + ' (×' + M.deseqLane[2] + ' dans l\'axe, ×' + M.deseqLane[1] + ' intérieur, ×' + M.deseqLane[0] + ' sur le côté, selon l\'arrivée), récupération haute ' + M.recupHaute + '. Fenêtre glissante. Réglable dans config.js (momentum).';
   }
   function renderTime(half) {
-    const metric = $('t-metric').value, t = FC.stats.timeline(FC.store.all(), metric, half), box = $('t-chart');
+    const metric = $('t-metric').value, t = FC.stats.timeline(FC.store.all(), metric, half, FC.store.h2Start()), box = $('t-chart');
     if (!t.hasClock) { box.innerHTML = ''; $('t-note').textContent = 'Chrono jamais lancé : pas de courbe. Il démarre tout seul au premier geste de chaque mi-temps.'; return; }
-    const minB = Math.ceil(2 * FC.store.h2Start() / 900000);   // tranches couvrant le temps réglementaire (2 x 35 min → 5)
-    let n = t.buckets.length; while (n > minB &&!t.buckets[n - 1].N && !t.buckets[n - 1].E) n--;
-    const bs = t.buckets.slice(0, n), name = $('t-metric').selectedOptions[0].textContent;
-    FC.chart.bars(box, C.timeBuckets.slice(0, n).map(function (l) { return l + '\''; }),
+    const bs = t.buckets, name = $('t-metric').selectedOptions[0].textContent;
+    FC.chart.bars(box, bs.map(function (x) { return x.label + '\''; }),
       bs.map(function (x) { return x.N; }), bs.map(function (x) { return x.E; }), name + ' par tranche de 15 minutes, Nous contre Eux');
-    $('t-note').textContent = 'Pertes et récupérations incluent celles déduites des passes ratées. ' + (half ? '' : 'La 2e mi-temps commence à ' + Math.round(FC.store.h2Start() / 60000) + '\'.');
+    $('t-note').textContent = 'Tranches comptées dans chaque mi-temps (le temps additionnel va dans la dernière). Pertes et récupérations incluent celles déduites des passes ratées.';
   }
   function bilanText() {
     const half = +$('b-half').value, b = FC.stats.bilan(FC.store.all(), half), out = [];

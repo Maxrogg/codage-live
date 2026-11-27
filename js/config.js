@@ -41,7 +41,6 @@ FC.CONFIG = {
   heat: { cell: 2, sigma: 5, minRef: 2.5, shrink: 5, volPow: 0.7, volMin: 0.08 },
   originMs: 15000,                         // fenêtre « origine d'une frappe » (avec chrono)
   originEvents: 3,                         // sans chrono : nb d'événements précédents regardés
-  timeBuckets: ['0–15', '15–30', '30–45', '45–60', '60–75', '75–90', '90+'],
   // Momentum = pression offensive de Nous moins celle d'Eux, sur une fenêtre glissante (minutes).
   // Chaque action vaut des points ; une entrée dans la surface remplace l'entrée dans le dernier tiers (pas de double compte).
   momentum: { win: 5, neutral: 1, entSurf: 3, entTiers: 1, shot: 2, shotOn: 1, goal: 2, deseq: 3, recupHaute: 1.5,
