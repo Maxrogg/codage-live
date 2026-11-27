@@ -225,6 +225,7 @@ FC.ui = (function () {
     const v = list.map(function (k) { return k[key]; }).filter(function (x) { return x != null; });
     return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null;
   }
+  function frDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : (d || ''); }   // 2026-11-27 → 27/11/2026
   function fmtN(v) { return v == null ? '–' : String(Math.round(v * 10) / 10).replace('.', ','); }
   function renderSnaps() {
     const snaps = FC.backup.list();
@@ -232,7 +233,7 @@ FC.ui = (function () {
     let h = '<table class="lib"><thead><tr><th>Quand</th><th>Match</th><th>Événements</th><th>Pourquoi</th><th></th></tr></thead><tbody>';
     snaps.forEach(function (s) {
       const d = new Date(s.ts), when = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      h += '<tr><td>' + when + '</td><td>' + (s.adv ? s.adv.replace(/</g, '&lt;') : '<span class="sub">(sans nom)</span>') + ' <span class="sub">' + (s.date || '') + '</span></td><td>' + s.n + '</td><td>' + s.reason.replace(/</g, '&lt;') +
+      h += '<tr><td>' + when + '</td><td>' + (s.adv ? s.adv.replace(/</g, '&lt;') : '<span class="sub">(sans nom)</span>') + ' <span class="sub">' + frDate(s.date) + '</span></td><td>' + s.n + '</td><td>' + s.reason.replace(/</g, '&lt;') +
         '</td><td class="act"><button data-restore="' + s.id + '">Restaurer</button></td></tr>';
     });
     $('snap-list').innerHTML = h + '</tbody></table>';
@@ -243,7 +244,7 @@ FC.ui = (function () {
     let h = '<table class="lib"><thead><tr><th>Date</th><th>Adversaire</th><th>Score</th><th>Résultat</th><th>Événements</th><th></th></tr></thead><tbody>';
     all.forEach(function (mt) {
       const r = FC.store.resultOf(mt), isCur = mt.id === FC.store.id();
-      h += '<tr class="' + (isCur ? 'cur' : '') + '"><td>' + (mt.info.date || '') + '</td><td>' + (mt.info.adv ? mt.info.adv.replace(/</g, '&lt;') : '<span class="sub">(sans nom)</span>') +
+      h += '<tr class="' + (isCur ? 'cur' : '') + '"><td>' + frDate(mt.info.date) + '</td><td>' + (mt.info.adv ? mt.info.adv.replace(/</g, '&lt;') : '<span class="sub">(sans nom)</span>') +
         (isCur ? ' <span class="sub">· en cours</span>' : '') + '</td><td>' + (r ? r.sn + ' – ' + r.se : '–') + '</td><td>' + badge(r) + '</td><td>' + mt.events.length +
         '</td><td class="act"><button data-open="' + mt.id + '">' + (isCur ? 'Coder' : 'Ouvrir') + '</button><button data-del="' + mt.id + '"' +
         (armedDel === mt.id ? ' class="danger">Confirmer ?' : '>Supprimer') + '</button></td></tr>';

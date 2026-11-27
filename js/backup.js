@@ -49,6 +49,9 @@ FC.backup = (function () {
   document.addEventListener('visibilitychange', function () {   // l'onglet se cache / se ferme : dernier point si ça a bougé
     if (!document.hidden || !FC.store.current) return;
     const mt = FC.store.current(), l = last[mt.id];
+    // Rien n'a changé depuis le dernier point de ce match (ex. après un rechargement) : pas de doublon.
+    const prev = readIdx().filter(function (x) { return x.mid === mt.id; }).sort(function (a, b) { return b.ts - a.ts; })[0];
+    if (prev && prev.n === mt.events.length && prev.ts >= mt.upd) return;
     if (mt.events.length && (!l || l.n !== mt.events.length)) snap(mt, 'à la fermeture / changement d\'onglet', 'auto');
   });
 
