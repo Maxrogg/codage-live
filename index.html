@@ -29,6 +29,7 @@
   <section class="stage">
     <canvas id="live"></canvas>
     <p id="last" class="last none"></p>
+    <div id="note-box" class="note-box" hidden><b id="note-t"></b><input id="note-in" type="text" maxlength="200" autocomplete="off" placeholder="Note (ex. bloc trop bas) — Entrée = garder · Échap = annuler"></div>
     <p id="hint" class="hint"></p>
   </section>
   <aside>
@@ -59,6 +60,7 @@
         </div>
       </section>
       <section><div id="live-stats"></div></section>
+      <section id="notes-sec" hidden><h2>Notes</h2><ul id="notes" class="recent notes"></ul></section>
       <section><h2>Derniers événements</h2><ul id="recent" class="recent"></ul>
         <div class="row">
           <button id="btn-undo">Annuler (Ctrl+Z)</button>
@@ -134,6 +136,7 @@
     <section class="card"><h2>Notre jeu</h2><ul id="bi-nous" class="insights"></ul></section>
     <section class="card"><h2>Leur jeu</h2><ul id="bi-eux" class="insights"></ul></section>
     <section class="card"><h2>Nous face à Eux</h2><ul id="bi-duel" class="insights"></ul></section>
+    <section class="card" id="bi-notes-sec" hidden><h2>Notes du match</h2><ul id="bi-notes" class="recent notes"></ul></section>
   </div>
 </main>
 

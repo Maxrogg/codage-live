@@ -11,7 +11,7 @@ FC.store = (function () {
   function today() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }  // date locale (pas UTC)
   function uid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function blank() {
-    return { id: uid(), info: { adv: '', date: today(), sn: null, se: null }, events: [], seq: 0,
+    return { id: uid(), info: { adv: '', date: today(), sn: null, se: null }, events: [], notes: [], seq: 0,
       meta: { half: 1, elapsed: 0, flip: false, halfMin: FC.CONFIG.halfMinDefault }, upd: Date.now() };
   }
   function norm(m) {                                    // tolère d'anciennes sauvegardes
@@ -24,6 +24,7 @@ FC.store = (function () {
       m.events = m.events.filter(known);
     }
     m.meta = Object.assign({ half: 1, elapsed: 0, flip: false }, m.meta || {});
+    m.notes = Array.isArray(m.notes) ? m.notes : [];        // notes écrites du coach, à part des actions (n'entrent dans aucun calcul)
     m.upd = m.upd || Date.now();
     return m;
   }
@@ -134,13 +135,24 @@ FC.store = (function () {
       mt.events.push(e); mt.seq = Math.max(mt.seq, e.id || 0); touch(mt); emit(); return e;
     },
     canRedo: function () { return redo.length; },
+    // Notes écrites (touche N) : { id, half, t, text }. Rangées à part : elles ne comptent dans aucune statistique.
+    notes: function () { return m().notes; },
+    addNote: function (text, t, half) {
+      const mt = m(), id = mt.notes.reduce(function (a, n) { return Math.max(a, n.id); }, 0) + 1;
+      const n = { id: id, half: half || mt.meta.half, t: t == null ? FC.clock.now() : t, text: String(text).slice(0, 200) };
+      mt.notes.push(n); mt.notes.sort(function (a, b) { return a.half - b.half || a.t - b.t; }); touch(mt); emit(); return n;
+    },
+    removeNote: function (id) {
+      const mt = m(); if (FC.backup) FC.backup.snap(mt, 'avant suppression d\'une note', 'auto');
+      mt.notes = mt.notes.filter(function (n) { return n.id !== id; }); touch(mt); emit();
+    },
     // Modifie plusieurs événements d'un coup (fn reçoit le match). Prendre un point de sauvegarde avant si c'est destructif.
     edit: function (fn) { const mt = m(); fn(mt); redo = []; touch(mt); emit(); },
     setMeta: function (patch) { const mt = m(); Object.assign(mt.meta, patch); if ('elapsed' in patch) stampClock(mt); touch(mt); emit(); },
     setInfo: function (patch) { const mt = m(); Object.assign(mt.info, patch); touch(mt); libSubs.forEach(function (f) { f(); }); },
     clear: function () {                                // vide le match courant (tests)
       const mt = m(); if (FC.backup && mt.events.length) FC.backup.snap(mt, 'avant remise à zéro');
-      mt.events = []; mt.seq = 0; redo = []; mt.meta = { half: 1, elapsed: 0, flip: false, running: false, halfMin: mt.meta.halfMin }; touch(mt); emit();
+      mt.events = []; mt.notes = []; mt.seq = 0; redo = []; mt.meta = { half: 1, elapsed: 0, flip: false, running: false, halfMin: mt.meta.halfMin }; touch(mt); emit();
     },
 
     // --- bibliothèque ---
@@ -206,9 +218,13 @@ FC.store = (function () {
       const r = function (v) { return v == null ? '' : (typeof v === 'number' ? Math.round(v * 10) / 10 : v); };
       const rows = m().events.map(function (e) {
         return [e.id, e.half, FC.clock.fmt(e.t), e.team, e.kind, e.ok == null ? '' : (e.ok ? 1 : 0),
-          r(e.x), r(e.y), r(e.x2), r(e.y2), e.res || '', FC.video ? r(FC.video.vt(e)) : ''].join(',');
+          r(e.x), r(e.y), r(e.x2), r(e.y2), e.res || '', FC.video ? r(FC.video.vt(e)) : '', ''].join(',');
       });
-      return [head].concat(rows).join('\n');
+      const q = function (s) { return '"' + String(s).replace(/"/g, '""') + '"'; };
+      const notes = m().notes.map(function (n) {            // notes du coach : type « note », texte dans la dernière colonne
+        return ['n' + n.id, n.half, FC.clock.fmt(n.t), '', 'note', '', '', '', '', '', '', FC.video ? r(FC.video.vt(n)) : '', q(n.text)].join(',');
+      });
+      return [head + ',note'].concat(rows, notes).join('\n');
     }
   };
 })();

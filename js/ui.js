@@ -1,7 +1,7 @@
 /* UI : onglets, panneau live, filtres d'analyse, tableaux. */
 FC.ui = (function () {
   const C = FC.CONFIG, $ = function (id) { return document.getElementById(id); };
-  let view = 'live', armedDel = null, armedTimer = null, armedZero = null, armedHalf = null, armedEv = null, armedEvTimer = null;
+  let view = 'live', armedDel = null, armedTimer = null, armedZero = null, armedHalf = null, armedEv = null, armedEvTimer = null, armedNote = null;
   const VIEWS = ['live', 'analysis', 'bilan', 'video', 'matches'];
 
   function el(tag, cls, html) {
@@ -95,7 +95,7 @@ FC.ui = (function () {
     if (S.pending) return '<b>Départ posé (' + C.teams[S.pending.team].label + ').</b> Déplace le curseur, <kbd>Espace</kbd> = arrivée réussie, <kbd>Espace</kbd> ×2 = <b>ratée</b> · <kbd>Ctrl</kbd> passe déséq. · <kbd>Shift</kbd> conduite déséq. · <kbd>Échap</kbd> annule';
     if (d.has(K.cpa)) return '<b>Mode CPA</b> — place le curseur à l\'endroit du ballon, <kbd>Espace</kbd> bref = <b class="n">Nous</b>, maintenu = <b class="e">Eux</b>. Corner, coup franc ou touche : déduit de la position';
     if (d.has(K.frappe)) return '<b>Mode frappe</b> — <kbd>Espace</kbd> = non cadrée, <kbd>Espace</kbd> ×2 = <b>cadrée</b>, puis <kbd>C</kbd> si but';
-    return 'Pad = déplacer · <kbd>Espace</kbd> bref = <b class="n">Nous</b> · <kbd>Espace</kbd> maintenu = <b class="e">Eux</b> · <kbd>Z</kbd> récup · <kbd>E</kbd> perte · <kbd>R</kbd>+<kbd>Espace</kbd> frappe · <kbd>F</kbd>+<kbd>Espace</kbd> CPA · <kbd>Espace</kbd> ×2 = passe ratée / frappe cadrée';
+    return 'Pad = déplacer · <kbd>Espace</kbd> bref = <b class="n">Nous</b> · <kbd>Espace</kbd> maintenu = <b class="e">Eux</b> · <kbd>Z</kbd> récup · <kbd>E</kbd> perte · <kbd>R</kbd>+<kbd>Espace</kbd> frappe · <kbd>F</kbd>+<kbd>Espace</kbd> CPA · <kbd>N</kbd> note · <kbd>Espace</kbd> ×2 = passe ratée / frappe cadrée';
   }
   function describe(e) {
     const kind = C.kinds[e.kind].label;
@@ -136,6 +136,7 @@ FC.ui = (function () {
     lb.textContent = last ? 'Dernière action : ' + describe(last) : 'Aucune action codée';
     if (last && lb.dataset.id !== String(last.id)) { lb.classList.remove('pop'); void lb.offsetWidth; lb.classList.add('pop'); }
     lb.dataset.id = last ? last.id : '';
+    const nts = FC.store.notes(); $('notes-sec').hidden = !nts.length; noteList($('notes'), nts.slice(-6).reverse(), true);
     const rs = FC.store.resultOf(FC.store.current());
     $('sb-n').textContent = rs ? rs.sn : 0; $('sb-e').textContent = rs ? rs.se : 0;
     statsTable($('live-stats'), 0, true);
@@ -290,6 +291,7 @@ FC.ui = (function () {
         li.lastChild.textContent = it.text; ul.appendChild(li);
       });
     });
+    const nt = notesOf(half); $('bi-notes-sec').hidden = !nt.length; noteList($('bi-notes'), nt, false);
     $('bi-note').textContent = b.n < 20 ? 'Peu de données (' + b.n + ' événements) : constats indicatifs.' : '';
     renderMomentum(half);
     renderTime(half);
@@ -317,7 +319,36 @@ FC.ui = (function () {
       out.push('', g[0]); g[1].forEach(function (it) { out.push(ICON[it.tone] + ' ' + it.text); });
     });
     out.push('', 'MOMENTUM', FC.momentum.summary(FC.momentum.compute(FC.store.all(), half, +$('mo-win').value, FC.store.h2Start())));
+    const nt = notesOf(half);
+    if (nt.length) { out.push('', 'NOTES'); nt.forEach(function (n) { out.push(noteLine(n)); }); }
     return out.join('\n');
+  }
+
+  // ---------- notes écrites (touche N) ----------
+  function notesOf(half) { return FC.store.notes().filter(function (n) { return !half || n.half === half; }); }
+  function noteLine(n) { return FC.clock.fmt(n.t) + (n.half === 2 ? ' (2e)' : '') + ' · ' + n.text; }
+  function noteList(ul, list, withDel) {
+    ul.innerHTML = '';
+    list.forEach(function (n) {
+      const li = el('li', 'nt'), tx = el('span', 'rtx'); tx.textContent = noteLine(n); li.appendChild(tx);
+      if (withDel) {
+        const dl = el('button', 'mini' + (armedNote === n.id ? ' danger' : ''), armedNote === n.id ? 'Supprimer ?' : '✕');
+        dl.dataset.rmnote = n.id; dl.title = 'Supprimer cette note (2 clics)'; li.appendChild(dl);
+      }
+      ul.appendChild(li);
+    });
+  }
+  let noteAt = null;                                    // { t, half } : instant capturé à l'appui sur N
+  function openNote() {
+    if (view !== 'live') return;
+    noteAt = { t: FC.clock.now(), half: FC.store.meta().half };
+    $('note-t').textContent = FC.clock.fmt(noteAt.t);
+    $('note-box').hidden = false; const i = $('note-in'); i.value = ''; i.focus();
+  }
+  function closeNote(save) {
+    const i = $('note-in'), txt = i.value.trim();
+    if (save && txt && noteAt) { FC.store.addNote(txt, noteAt.t, noteAt.half); flash('Note gardée à ' + FC.clock.fmt(noteAt.t)); }
+    noteAt = null; $('note-box').hidden = true; i.value = ''; i.blur(); window.focus();
   }
 
   function setView(v) {
@@ -424,6 +455,17 @@ FC.ui = (function () {
     $('btn-flip').onclick = function () { FC.store.setMeta({ flip: !FC.store.meta().flip }); };
     $('btn-undo').onclick = function () { FC.input.undo(); };
     $('btn-redo').onclick = function () { FC.input.redo(); };
+    $('note-in').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); closeNote(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeNote(false); }
+    });
+    $('note-in').addEventListener('blur', function () { if (noteAt) closeNote(true); });   // clic ailleurs : la note tapée est gardée
+    $('notes').onclick = function (e) {                 // ✕ = supprimer la note (2 clics)
+      const t = e.target; if (t.tagName !== 'BUTTON' || !t.dataset.rmnote) return;
+      t.blur(); const id = +t.dataset.rmnote;
+      if (armedNote !== id) { armedNote = id; setTimeout(function () { if (armedNote === id) { armedNote = null; renderSide(); } }, 3500); renderSide(); return; }
+      armedNote = null; FC.store.removeNote(id); flash('Note supprimée');
+    };
     $('recent').onclick = function (e) {                // ⇄ = Nous ↔ Eux (récup ↔ perte) · ✕ = supprimer (2 clics)
       const t = e.target; if (t.tagName !== 'BUTTON') return;
       t.blur();                                         // sinon Espace (saisie) pourrait recliquer le bouton
@@ -488,6 +530,7 @@ FC.ui = (function () {
       ['Échap', 'annule le geste en cours'],
       ['Ctrl + Z', 'annule le dernier événement'],
       ['Ctrl + Y', 'rétablit l\'événement annulé'],
+      ['N', 'écrire une note au temps du chrono (Entrée = garder, Échap = annuler)'],
       ['⇄ / ✕ (derniers événements)', 'passe l\'action à l\'autre équipe (récup ↔ perte) / la supprime (2 clics)']
     ];
     $('legend').innerHTML = rows.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('');
@@ -527,5 +570,5 @@ FC.ui = (function () {
     updateChip();
     FC.sync.init();
   }
-  return { init: init, refresh: refresh, flash: flash };
+  return { init: init, refresh: refresh, flash: flash, openNote: openNote };
 })();

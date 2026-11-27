@@ -118,6 +118,7 @@ FC.input = (function () {
       if (k === K.annuler) { e.preventDefault(); drop(); return; }
       if (e.ctrlKey || e.metaKey || e.altKey) return;      // Ctrl/Alt + lettre = raccourci du navigateur, pas le nôtre
       if (k === K.but && !e.repeat) { goal(); return; }
+      if (k === K.note) { e.preventDefault(); if (!e.repeat && FC.ui && FC.ui.openNote) { drop(); FC.ui.openNote(); } return; }
       if (k === K.recup) { if (!e.repeat) quick('recup'); return; }
       if (k === K.perte) { if (!e.repeat) quick('perte'); return; }
       if (k.length === 1) { S.down.add(k); onUpdate(); }

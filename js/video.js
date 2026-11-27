@@ -13,7 +13,8 @@ FC.video = (function () {
     perte:  { label: 'Pertes',        f: function (e) { return e.kind === 'perte' || (C.kinds[e.kind].two && !e.ok); } },
     recup:  { label: 'Récupérations', f: function (e) { return e.kind === 'recup'; } },
     cpa:    { label: 'CPA',           f: function (e) { return e.kind === 'cpa'; } },
-    pass:   { label: 'Passes',        f: function (e) { return e.kind === 'pass'; } }
+    pass:   { label: 'Passes',        f: function (e) { return e.kind === 'pass'; } },
+    note:   { label: 'Notes',         f: function () { return false; } }      // notes écrites (touche N), ajoutées à part
   };
   let filter = 'all', team = 'N', sel = null, fileName = '', url = null, describe = null, flash = function () {};
   let chain = false;                                   // lecture enchaînée de la sélection (comme une playlist)
@@ -33,7 +34,11 @@ FC.video = (function () {
   }
   function list() {
     const f = FILTERS[filter].f;
-    return FC.store.all().filter(function (e) { return (team === 'all' || e.team === team) && f(e); });
+    const ev = FC.store.all().filter(function (e) { return (team === 'all' || e.team === team) && f(e); });
+    if (filter !== 'all' && filter !== 'note') return ev;
+    // Notes : id « n1 », « n2 »… (pas de confusion avec les actions), visibles quelle que soit l'équipe choisie.
+    const nt = FC.store.notes().map(function (n) { return { id: 'n' + n.id, kind: 'note', half: n.half, t: n.t, text: n.text }; });
+    return ev.concat(nt).sort(function (a, b) { return a.half - b.half || a.t - b.t; });
   }
   function player() { return $('vd'); }
 
@@ -76,7 +81,7 @@ FC.video = (function () {
   }
   // « C'est ici » : l'action sélectionnée se passe à l'instant affiché par le lecteur → on en déduit le calage de sa mi-temps.
   function syncOnSelected() {
-    const e = FC.store.all().find(function (x) { return x.id === sel; }), p = player();
+    const e = list().find(function (x) { return x.id === sel; }), p = player();
     if (!e) { flash('Choisis d\'abord une action dans la liste'); return; }
     if (!p.src) { flash('Ouvre d\'abord le fichier vidéo'); return; }
     const k = p.currentTime - (e.t - start(e.half)) / 1000, patch = {};
@@ -99,6 +104,7 @@ FC.video = (function () {
     return { format: 'codage-live/actions-video', version: 1, match: { id: mt.id, info: mt.info },
       video: { fichier: v.name || null, k1: v.k1 == null ? null : v.k1, k2: v.k2 == null ? null : v.k2 },
       repere: 'mètres, 105 x 68, Nous attaque vers la droite (x = 105 = but adverse)',
+      notes: mt.notes.map(function (n) { return Object.assign({}, n, { video_s: vt(n, v) == null ? null : Math.round(vt(n, v) * 10) / 10 }); }),
       actions: mt.events.map(function (e) { return Object.assign({}, e, { video_s: vt(e, v) == null ? null : Math.round(vt(e, v) * 10) / 10 }); }) };
   }
 
@@ -118,8 +124,10 @@ FC.video = (function () {
     if (!l.length) { box.innerHTML = '<li class="sub">Aucune action pour ce filtre.</li>'; return; }
     l.forEach(function (e) {
       const li = document.createElement('li'), s = vt(e, v);
-      li.className = (e.team === 'N' ? 'n' : 'e') + (e.id === sel ? ' sel' : '') + (s == null ? ' nosync' : '');
-      li.innerHTML = '<span class="vt">' + fmt(s) + '</span>' + describe(e);
+      li.className = (e.kind === 'note' ? 'nt' : e.team === 'N' ? 'n' : 'e') + (e.id === sel ? ' sel' : '') + (s == null ? ' nosync' : '');
+      li.innerHTML = '<span class="vt">' + fmt(s) + '</span>';
+      if (e.kind === 'note') { const b = document.createElement('span'); b.textContent = FC.clock.fmt(e.t) + ' · Note · ' + e.text; li.appendChild(b); }
+      else li.innerHTML += describe(e);
       li.onclick = function () { seek(e); };
       box.appendChild(li);
     });

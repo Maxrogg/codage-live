@@ -12,6 +12,7 @@ FC.CONFIG = {
     perte: 'e',                            // 1 appui = perte de Nous (compte aussi comme récupération d'Eux), au curseur
     frappe: 'r',                           // tenue + Espace : 1 appui = non cadrée, 2 appuis = cadrée
     but: 'c',
+    note: 'n',                             // 1 appui = écrire une note au temps du chrono (Entrée = garder, Échap = annuler)
     cpa: 'f',                              // tenue + Espace = coup de pied arrêté à cet endroit (type déduit de la position)                              // appuyer juste après une frappe = c'est un but
     annuler: 'escape'                      // Échap : annule le geste en cours (Espace = poser le point)
   },

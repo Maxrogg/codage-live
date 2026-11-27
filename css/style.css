@@ -245,3 +245,9 @@ details.howto > p { margin: 10px 0 0; padding: 0 2px; }
 .recent li { display: flex; align-items: center; gap: 4px; } .recent li .rtx { flex: 1; }
 .recent button.mini { padding: 0 7px; min-height: 0; height: 22px; font-size: 12px; line-height: 1; opacity: .55; }
 .recent li:hover button.mini, .recent button.mini.danger { opacity: 1; }
+/* Notes écrites (touche N) */
+.note-box { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; padding: 8px 12px; background: var(--surface); border: 2px solid var(--yellow); border-radius: 10px; box-shadow: var(--shadow); }
+.note-box[hidden] { display: none; }
+.note-box b { font: 600 16px/1 var(--display); font-variant-numeric: tabular-nums; }
+.note-box input { flex: 1; font-size: 16px; padding: 6px 10px; }
+.recent li.nt, .vd-list li.nt { border-left-color: var(--yellow); font-style: italic; }
