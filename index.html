@@ -28,6 +28,7 @@
 <main id="view-live">
   <section class="stage">
     <canvas id="live"></canvas>
+    <p id="last" class="last none"></p>
     <p id="hint" class="hint"></p>
   </section>
   <aside>
@@ -48,6 +49,7 @@
         <div class="fields">
           <label>Adversaire <input id="m-adv" type="text" placeholder="ex. FC Annecy" autocomplete="off"></label>
           <label>Date <input id="m-date" type="date"></label>
+          <label title="Durée d'une mi-temps : la 2e commence à ce temps au chrono (courbes et vidéo en tiennent compte)">Mi-temps <select id="m-hmin"></select></label>
         </div>
         <div class="fields score">
           <span class="n">Nous</span><input id="m-sn" type="number" min="0" max="30" inputmode="numeric">

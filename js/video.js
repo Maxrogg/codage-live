@@ -1,6 +1,6 @@
 /* VIDÉO : relie le codage au film du match (fichier MP4 ouvert depuis le PC, rien n'est envoyé ni copié).
    Calage par mi-temps : k1 / k2 = seconde de la vidéo où le chrono de la mi-temps vaut son départ
-   (00:00 en 1re, 45:00 en 2e). Temps vidéo d'une action = k[mi-temps] + (chrono - départ) / 1000.
+   (00:00 en 1re, durée d'une mi-temps en 2e, ex. 35:00). Temps vidéo d'une action = k[mi-temps] + (chrono - départ) / 1000.
    Le calage est gardé dans le match (meta.video) ; le fichier, lui, doit être rouvert après un rechargement. */
 FC.video = (function () {
   const C = FC.CONFIG, $ = function (id) { return document.getElementById(id); };
@@ -18,7 +18,7 @@ FC.video = (function () {
 
   function vmeta() { return FC.store.meta().video || {}; }
   function setV(patch) { FC.store.setMeta({ video: Object.assign({}, vmeta(), patch) }); }
-  function start(h) { return h === 2 ? C.halfStartMs : 0; }
+  function start(h) { return h === 2 ? FC.store.h2Start() : 0; }
   // Seconde de la vidéo pour une action (null si la mi-temps n'est pas calée).
   function vt(e, v) {
     v = v || vmeta(); const k = e.half === 2 ? v.k2 : v.k1;
@@ -80,7 +80,7 @@ FC.video = (function () {
     const v = vmeta();
     ['1', '2'].forEach(function (h) {
       const k = v['k' + h];
-      $('vd-k' + h).textContent = k == null ? 'pas calée' : 'calée : chrono ' + (h === '1' ? '00:00' : '45:00') + ' = ' + fmt(k) + ' dans la vidéo';
+      $('vd-k' + h).textContent = k == null ? 'pas calée' : 'calée : chrono ' + (h === '1' ? '00:00' : FC.clock.fmt(FC.store.h2Start())) + ' = ' + fmt(k) + ' dans la vidéo';
     });
     const p = player();
     $('vd-file').textContent = p.src ? fileName : (v.name ? 'Rouvre « ' + v.name + ' » (le fichier n\'est pas gardé après un rechargement)' : 'Aucun fichier ouvert');

@@ -1,7 +1,7 @@
 /* UI : onglets, panneau live, filtres d'analyse, tableaux. */
 FC.ui = (function () {
   const C = FC.CONFIG, $ = function (id) { return document.getElementById(id); };
-  let view = 'live', armedDel = null, armedTimer = null, armedZero = null, armedHalf = null;
+  let view = 'live', armedDel = null, armedTimer = null, armedZero = null, armedHalf = null, armedEv = null, armedEvTimer = null;
   const VIEWS = ['live', 'analysis', 'bilan', 'video', 'matches'];
 
   function el(tag, cls, html) {
@@ -118,14 +118,24 @@ FC.ui = (function () {
     if (!armedHalf) {
       const bh = $('btn-half'); bh.classList.remove('danger');
       bh.textContent = m.half === 1 ? 'Mi-temps' : '↶ 1re mi-temps';
-      bh.title = m.half === 1 ? 'Passer en 2e mi-temps (chrono à 45:00, changement de côté)' : 'Revenir en 1re mi-temps (si Mi-temps a été cliqué par erreur)';
+      bh.title = m.half === 1 ? 'Passer en 2e mi-temps (chrono à ' + FC.clock.fmt(FC.store.h2Start()) + ', changement de côté)' : 'Revenir en 1re mi-temps (si Mi-temps a été cliqué par erreur)';
     }
     $('btn-redo').disabled = !FC.store.canRedo();
     $('dir').textContent = 'Nous attaquons vers ' + (m.flip ? 'la gauche' : 'la droite');
     const list = $('recent'); list.innerHTML = '';
     ev.slice(-8).reverse().forEach(function (e) {
-      const li = el('li', e.team === 'N' ? 'n' : 'e'); li.textContent = describe(e); list.appendChild(li);
+      const li = el('li', e.team === 'N' ? 'n' : 'e'), tx = el('span', 'rtx'); tx.textContent = describe(e); li.appendChild(tx);
+      const sw = el('button', 'mini', '⇄'); sw.dataset.swap = e.id;
+      sw.title = e.kind === 'recup' ? 'Changer en perte de balle' : e.kind === 'perte' ? 'Changer en récupération' : 'Passer à ' + C.teams[e.team === 'N' ? 'E' : 'N'].label;
+      const dl = el('button', 'mini' + (armedEv === e.id ? ' danger' : ''), armedEv === e.id ? 'Supprimer ?' : '✕'); dl.dataset.rm = e.id; dl.title = 'Supprimer cette action (2 clics)';
+      li.appendChild(sw); li.appendChild(dl); list.appendChild(li);
     });
+    // Dernière action, en gros sous le terrain : confirme ce qui vient d'être codé sans quitter le terrain des yeux.
+    const last = ev[ev.length - 1], lb = $('last');
+    lb.className = 'last' + (last ? (last.team === 'N' ? ' n' : ' e') : ' none');
+    lb.textContent = last ? 'Dernière action : ' + describe(last) : 'Aucune action codée';
+    if (last && lb.dataset.id !== String(last.id)) { lb.classList.remove('pop'); void lb.offsetWidth; lb.classList.add('pop'); }
+    lb.dataset.id = last ? last.id : '';
     const rs = FC.store.resultOf(FC.store.current());
     $('sb-n').textContent = rs ? rs.sn : 0; $('sb-e').textContent = rs ? rs.se : 0;
     statsTable($('live-stats'), 0, true);
@@ -192,6 +202,10 @@ FC.ui = (function () {
   function fillMatchCard(force) {
     const i = FC.store.info(), set = function (id, v) { const n = $(id); if (force || document.activeElement !== n) n.value = v == null ? '' : v; };
     set('m-adv', i.adv); set('m-date', i.date); set('m-sn', i.sn); set('m-se', i.se);
+    const hm = Math.round(FC.store.h2Start() / 60000), sel = $('m-hmin');
+    const opts = C.halfMinChoices.indexOf(hm) < 0 ? C.halfMinChoices.concat([hm]).sort(function (a, b) { return a - b; }) : C.halfMinChoices;
+    if (sel.options.length !== opts.length) sel.innerHTML = opts.map(function (v) { return '<option value="' + v + '">' + v + ' min</option>'; }).join('');
+    sel.value = String(hm);
     $('m-res').innerHTML = badge(FC.store.resultOf(FC.store.current()));
     const g = FC.store.goals(FC.store.current());
     $('m-fill').textContent = 'Buts codés ' + g.N + '–' + g.E;
@@ -280,7 +294,7 @@ FC.ui = (function () {
     renderTime(half);
   }
   function renderMomentum(half) {
-    const d = FC.momentum.compute(FC.store.all(), half, +$('mo-win').value), box = $('mo-chart');
+    const d = FC.momentum.compute(FC.store.all(), half, +$('mo-win').value, FC.store.h2Start()), box = $('mo-chart');
     $('mo-note').textContent = FC.momentum.summary(d);
     if (!d.hasClock) { box.innerHTML = ''; $('mo-rule').textContent = ''; return; }
     FC.chart.momentum(box, d, 'Momentum : avantage de Nous ou d\'Eux minute par minute');
@@ -290,11 +304,12 @@ FC.ui = (function () {
   function renderTime(half) {
     const metric = $('t-metric').value, t = FC.stats.timeline(FC.store.all(), metric, half), box = $('t-chart');
     if (!t.hasClock) { box.innerHTML = ''; $('t-note').textContent = 'Chrono jamais lancé : pas de courbe. Il démarre tout seul au premier geste de chaque mi-temps.'; return; }
-    let n = t.buckets.length; while (n > 6 && !t.buckets[n - 1].N && !t.buckets[n - 1].E) n--;
+    const minB = Math.ceil(2 * FC.store.h2Start() / 900000);   // tranches couvrant le temps réglementaire (2 x 35 min → 5)
+    let n = t.buckets.length; while (n > minB &&!t.buckets[n - 1].N && !t.buckets[n - 1].E) n--;
     const bs = t.buckets.slice(0, n), name = $('t-metric').selectedOptions[0].textContent;
     FC.chart.bars(box, C.timeBuckets.slice(0, n).map(function (l) { return l + '\''; }),
       bs.map(function (x) { return x.N; }), bs.map(function (x) { return x.E; }), name + ' par tranche de 15 minutes, Nous contre Eux');
-    $('t-note').textContent = 'Pertes et récupérations incluent celles déduites des passes ratées. ' + (half ? '' : 'La 2e mi-temps commence à 45\'.');
+    $('t-note').textContent = 'Pertes et récupérations incluent celles déduites des passes ratées. ' + (half ? '' : 'La 2e mi-temps commence à ' + Math.round(FC.store.h2Start() / 60000) + '\'.');
   }
   function bilanText() {
     const half = +$('b-half').value, b = FC.stats.bilan(FC.store.all(), half), out = [];
@@ -302,7 +317,7 @@ FC.ui = (function () {
     [['NOTRE JEU', b.nous], ['LEUR JEU', b.eux], ['NOUS FACE À EUX', b.duel]].forEach(function (g) {
       out.push('', g[0]); g[1].forEach(function (it) { out.push(ICON[it.tone] + ' ' + it.text); });
     });
-    out.push('', 'MOMENTUM', FC.momentum.summary(FC.momentum.compute(FC.store.all(), half, +$('mo-win').value)));
+    out.push('', 'MOMENTUM', FC.momentum.summary(FC.momentum.compute(FC.store.all(), half, +$('mo-win').value, FC.store.h2Start())));
     return out.join('\n');
   }
 
@@ -335,6 +350,14 @@ FC.ui = (function () {
     $('b-half').onchange = renderBilan; $('t-metric').onchange = renderBilan; $('mo-win').onchange = renderBilan;
     $('m-adv').oninput = function () { FC.store.setInfo({ adv: this.value }); };
     $('m-date').onchange = function () { FC.store.setInfo({ date: this.value }); };
+    $('m-hmin').onchange = function () {               // durée des mi-temps : la 2e mi-temps (actions + chrono) suit
+      const delta = FC.store.setHalfMin(+this.value);
+      if (delta && FC.store.meta().half === 2) {
+        const run = FC.clock.isRunning(); FC.clock.pause(); FC.clock.set(FC.clock.now() + delta); if (run) FC.clock.start();
+        FC.store.setMeta({ elapsed: FC.clock.now() });
+      }
+      this.blur(); renderSide(); tick(); flash('Mi-temps de ' + this.value + ' min');
+    };
     $('m-sn').oninput = function () { FC.store.setInfo({ sn: num(this.value) }); fillMatchCard(false); };
     $('m-se').oninput = function () { FC.store.setInfo({ se: num(this.value) }); fillMatchCard(false); };
     $('m-fill').onclick = function () { const g = FC.store.goals(FC.store.current()); FC.store.setInfo({ sn: g.N, se: g.E }); fillMatchCard(true); };
@@ -376,8 +399,8 @@ FC.ui = (function () {
       if (m.half === 1) {                               // passage en 2e : on change de côté (quel que soit le sens de la 1re)
         if (FC.store.all().length) FC.backup.snap(FC.store.current(), 'mi-temps');
         const h1End = FC.clock.now();
-        FC.input.cancel(); FC.clock.pause(); FC.clock.set(C.halfStartMs);
-        FC.store.setMeta({ half: 2, elapsed: C.halfStartMs, flip: !m.flip, h1End: h1End }); tick();
+        FC.input.cancel(); FC.clock.pause(); FC.clock.set(FC.store.h2Start());
+        FC.store.setMeta({ half: 2, elapsed: FC.store.h2Start(), flip: !m.flip, h1End: h1End }); tick();
         return;
       }
       // Retour en 1re mi-temps (clic par erreur) : confirmation en 2 clics, point de sauvegarde avant.
@@ -390,7 +413,7 @@ FC.ui = (function () {
       FC.input.cancel();
       const ev = FC.store.all(), h1 = ev.filter(function (e) { return e.half === 1; });
       const base = m.h1End != null ? m.h1End : h1.reduce(function (a, e) { return Math.max(a, e.t || 0); }, 0);
-      const shift = function (t) { return base + Math.max(0, (t || 0) - C.halfStartMs); };
+      const shift = function (t) { return base + Math.max(0, (t || 0) - FC.store.h2Start()); };
       if (ev.length) FC.backup.snap(FC.store.current(), 'avant retour en 1re mi-temps');
       const now = shift(FC.clock.now()), running = FC.clock.isRunning();
       FC.store.edit(function (mt) {                     // les actions codées « en 2e » passent en 1re, à la suite
@@ -402,6 +425,31 @@ FC.ui = (function () {
     $('btn-flip').onclick = function () { FC.store.setMeta({ flip: !FC.store.meta().flip }); };
     $('btn-undo').onclick = function () { FC.input.undo(); };
     $('btn-redo').onclick = function () { FC.input.redo(); };
+    $('recent').onclick = function (e) {                // ⇄ = Nous ↔ Eux (récup ↔ perte) · ✕ = supprimer (2 clics)
+      const t = e.target; if (t.tagName !== 'BUTTON') return;
+      t.blur();                                         // sinon Espace (saisie) pourrait recliquer le bouton
+      if (t.dataset.swap) {
+        const id = +t.dataset.swap;
+        FC.input.cancel();
+        FC.store.edit(function (mt) {
+          const ev = mt.events.filter(function (x) { return x.id === id; })[0]; if (!ev) return;
+          if (ev.kind === 'recup' || ev.kind === 'perte') ev.kind = ev.kind === 'recup' ? 'perte' : 'recup';
+          else { ev.team = ev.team === 'N' ? 'E' : 'N'; if (ev.kind === 'cpa') ev.cpa = FC.stats.cpaType(ev.team, ev.x, ev.y); }
+        });
+        flash('Action corrigée'); return;
+      }
+      if (t.dataset.rm) {
+        const id = +t.dataset.rm;
+        if (armedEv !== id) {
+          armedEv = id; clearTimeout(armedEvTimer);
+          armedEvTimer = setTimeout(function () { armedEv = null; renderSide(); }, 3500); renderSide(); return;
+        }
+        clearTimeout(armedEvTimer); armedEv = null; FC.input.cancel();
+        FC.backup.snap(FC.store.current(), 'avant suppression d\'une action', 'auto');
+        FC.store.edit(function (mt) { mt.events = mt.events.filter(function (x) { return x.id !== id; }); });
+        flash('Action supprimée');
+      }
+    };
     $('btn-json').onclick = function () { copy(FC.store.toJSON(), 'JSON'); };
     $('btn-csv').onclick = function () { copy(FC.store.toCSV(), 'CSV'); };
     $('btn-reset').onclick = function () { FC.store.newMatch(); flash('Nouveau match'); };
@@ -440,7 +488,8 @@ FC.ui = (function () {
       ['Chrono', 'démarre tout seul au 1er geste de chaque mi-temps'],
       ['Échap', 'annule le geste en cours'],
       ['Ctrl + Z', 'annule le dernier événement'],
-      ['Ctrl + Y', 'rétablit l\'événement annulé']
+      ['Ctrl + Y', 'rétablit l\'événement annulé'],
+      ['⇄ / ✕ (derniers événements)', 'passe l\'action à l\'autre équipe (récup ↔ perte) / la supprime (2 clics)']
     ];
     $('legend').innerHTML = rows.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('');
   }

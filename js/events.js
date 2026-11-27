@@ -12,7 +12,7 @@ FC.store = (function () {
   function uid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function blank() {
     return { id: uid(), info: { adv: '', date: today(), sn: null, se: null }, events: [], seq: 0,
-      meta: { half: 1, elapsed: 0, flip: false }, upd: Date.now() };
+      meta: { half: 1, elapsed: 0, flip: false, halfMin: FC.CONFIG.halfMinDefault }, upd: Date.now() };
   }
   function norm(m) {                                    // tolère d'anciennes sauvegardes
     m.info = Object.assign({ adv: '', date: today(), sn: null, se: null }, m.info || {});
@@ -45,6 +45,8 @@ FC.store = (function () {
   function emit() { subs.forEach(function (f) { f(); }); libSubs.forEach(function (f) { f(); }); }
   function m() { return matches[cur]; }
   // État du chrono enregistré avec le match : permet de reprendre au bon temps après un rechargement de la page.
+  // Chrono au début de la 2e mi-temps (= durée d'une mi-temps). Anciens matchs sans durée : 45 min.
+  function h2Start(mt) { mt = mt || m(); return (mt && mt.meta.halfMin ? mt.meta.halfMin : FC.CONFIG.halfStartMs / 60000) * 60000; }
   function stampClock(mt) { mt.meta.running = FC.clock.isRunning(); mt.meta.wallAt = Date.now(); }
 
   // Résultat vu de Nous : score saisi, sinon buts codés (déduit).
@@ -104,7 +106,18 @@ FC.store = (function () {
     current: function () { return m(); },
     get: function (id) { return matches[id]; },
     matches: function () { return Object.keys(matches).map(function (k) { return matches[k]; }); },
-    resultOf: resultOf, goals: goals,
+    resultOf: resultOf, goals: goals, h2Start: h2Start,
+    // Change la durée des mi-temps du match courant : les actions de 2e mi-temps suivent (même minute dans la mi-temps).
+    // Renvoie le décalage (ms) à appliquer au chrono si on est en 2e mi-temps.
+    setHalfMin: function (min) {
+      const mt = m(), delta = min * 60000 - h2Start(mt);
+      if (!delta) return 0;
+      const in2 = mt.events.filter(function (e) { return e.half === 2; });
+      if (in2.length && FC.backup) FC.backup.snap(mt, 'avant changement de durée des mi-temps');
+      in2.forEach(function (e) { e.t = (e.t || 0) + delta; });
+      mt.meta.halfMin = min; redo = []; touch(mt); emit();
+      return delta;
+    },
 
     add: function (ev) {
       const mt = m();
@@ -127,7 +140,7 @@ FC.store = (function () {
     setInfo: function (patch) { const mt = m(); Object.assign(mt.info, patch); touch(mt); libSubs.forEach(function (f) { f(); }); },
     clear: function () {                                // vide le match courant (tests)
       const mt = m(); if (FC.backup && mt.events.length) FC.backup.snap(mt, 'avant remise à zéro');
-      mt.events = []; mt.seq = 0; redo = []; mt.meta = { half: 1, elapsed: 0, flip: false, running: false }; touch(mt); emit();
+      mt.events = []; mt.seq = 0; redo = []; mt.meta = { half: 1, elapsed: 0, flip: false, running: false, halfMin: mt.meta.halfMin }; touch(mt); emit();
     },
 
     // --- bibliothèque ---

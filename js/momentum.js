@@ -1,6 +1,6 @@
 /* MOMENTUM : qui domine, minute après minute. Calcul pur (aucun accès à l'écran), testable seul.
    Pression d'une équipe = somme des points de ses actions offensives dans la fenêtre ; momentum = Nous − Eux.
-   Les points sont dans FC.CONFIG.momentum. Chaque mi-temps est tracée à part (pas de chevauchement si la 1re dépasse 45'). */
+   Les points sont dans FC.CONFIG.momentum. Chaque mi-temps est tracée à part (pas de chevauchement si la 1re dépasse la durée prévue). */
 FC.momentum = (function () {
   const C = FC.CONFIG, S = FC.stats, MIN = 60000;
 
@@ -22,7 +22,8 @@ FC.momentum = (function () {
   }
 
   // half : 0 = match entier, 1 ou 2. win : fenêtre en minutes. Renvoie { hasClock } si le chrono n'a jamais servi.
-  function compute(events, half, win) {
+  function compute(events, half, win, h2ms) {                 // h2ms : chrono au début de la 2e mi-temps (défaut 45 min)
+    const H2 = Math.round((h2ms || C.halfStartMs) / MIN);
     const M = C.momentum; win = win || M.win;
     if (!events.some(function (e) { return e.t > 0; })) return { hasClock: false };
     const list = S.withDerived(events).filter(function (e) { return !half || e.half === half; })
@@ -35,9 +36,9 @@ FC.momentum = (function () {
     const halves = half ? [half] : (has2 ? [1, 2] : [1]);
     const segs = []; let x = 0;
     halves.forEach(function (h) {
-      const start = h === 2 ? Math.round(C.halfStartMs / MIN) : 0;
+      const start = h === 2 ? H2 : 0;
       let end = Math.ceil(maxT(h) / MIN);
-      if (h === 1 && has2 && !half) end = Math.max(end, 45);
+      if (h === 1 && has2 && !half) end = Math.max(end, H2);
       end = Math.max(end, start + 5);
       if (segs.length) x += 3;                       // petit blanc entre les deux mi-temps
       segs.push({ half: h, from: start, to: end, x0: x - start });

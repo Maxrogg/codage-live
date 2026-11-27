@@ -235,3 +235,11 @@ details.howto > p { margin: 10px 0 0; padding: 0 2px; }
 .vd-list li.nosync .vt { opacity: .45; }
 .vd-list .vt { display: inline-block; min-width: 52px; font: 600 12px ui-monospace, Consolas, monospace; color: var(--ink2); }
 @media (max-width: 1000px) { .vd-wrap { grid-template-columns: 1fr; } }
+/* Dernière action sous le terrain + boutons ⇄ / ✕ des derniers événements */
+.last { margin: 14px 0 0; padding: 8px 16px; font: 600 17px/1.4 var(--display); font-variant-numeric: tabular-nums; background: var(--surface); border: 1px solid var(--rule); border-left: 5px solid var(--rule); border-radius: 10px; box-shadow: var(--shadow); }
+.last.n { border-left-color: var(--nous); } .last.e { border-left-color: var(--eux); } .last.none { color: var(--ink2); font-weight: 400; font-size: 14px; }
+.last.pop { animation: lastpop .6s ease-out; }
+@keyframes lastpop { from { background: var(--yellow); color: var(--yellow-ink); } to { background: var(--surface); } }
+.recent li { display: flex; align-items: center; gap: 4px; } .recent li .rtx { flex: 1; }
+.recent button.mini { padding: 0 7px; min-height: 0; height: 22px; font-size: 12px; line-height: 1; opacity: .55; }
+.recent li:hover button.mini, .recent button.mini.danger { opacity: 1; }
